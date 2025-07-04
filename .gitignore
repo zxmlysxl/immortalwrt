@@ -7,6 +7,7 @@
 /.config.old
 /.toolchain_build_ver
 /compile_date.txt
+/build.log
 /bin
 /build_dir
 /staging_dir

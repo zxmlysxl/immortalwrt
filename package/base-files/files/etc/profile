@@ -229,5 +229,5 @@ while true; do
             ;;
     esac
 done
-/usr/bin/zsh
+
 

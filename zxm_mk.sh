@@ -8,7 +8,17 @@ declare -A week_map=(
     [0]="星期天" [1]="星期一" [2]="星期二" 
     [3]="星期三" [4]="星期四" [5]="星期五" [6]="星期六"
 )
-echo "${date_str} ${time_str} by 上网的蜗牛 ${week_map[$week_num]}" > compile_date.txt
+
+CUSTOM_DESC="zxmlysxl Immort ${date_str} ${time_str} by 上网的蜗牛 ${week_map[$week_num]}"
+
+cat > package/base-files/files/etc/openwrt_release <<EOF
+DISTRIB_ID="ImmortalWrt"
+DISTRIB_RELEASE="Custom"
+DISTRIB_REVISION="r$(git rev-parse --short HEAD)"
+DISTRIB_DESCRIPTION="$CUSTOM_DESC"
+EOF
+  
+echo "zxmlysxl Immort ${date_str} ${time_str} by 上网的蜗牛 ${week_map[$week_num]}" > compile_date.txt
 
 # 计算并发数
 calc_jobs() {
@@ -20,10 +30,11 @@ calc_jobs() {
 
 #开始编译
 #make clean
-#make dirclean
+make dirclean
+#make package/feeds/packages/python-pip/{clean,compile} V=s #清理并单独编译python-pip
 git pull
 ./scripts/feeds update -a && ./scripts/feeds install -a
 make download -j8
-make -j$(calc_jobs) V=s 2>&1 | tee build.log  #增量编译
-#make world -j$(calc_jobs) V=s 2>&1 | tee build.log  #完整编译
+#make -j$(calc_jobs) V=s 2>&1 | tee build.log  #增量编译
+make world -j$(calc_jobs) V=s 2>&1 | tee build.log  #完整编译
 

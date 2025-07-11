@@ -8,7 +8,26 @@ board_config_update
 
 json_is_a network object && exit 0
 
-ucidef_set_interface_lan 'eth0'
+# 设置带详细参数的LAN接口
+ucidef_set_interface_lan() {
+    local ifname=$1
+    local type=$2
+    
+    ucidef_add_network "cfg$ifname"
+    ucidef_set_interface_core "$ifname" "$type" "192.168.32.10" "255.255.255.0"
+    ucidef_add_switch_vlan "cfg$ifname" "$ifname" "0" "0 1 2 3 4 5t"
+}
+
+# 设置带详细参数的WAN接口
+ucidef_set_interface_wan() {
+    local ifname=$1
+    
+    ucidef_add_network "cfg$ifname"
+    ucidef_set_interface_core "$ifname" "dhcp"
+}
+
+# 应用配置
+ucidef_set_interface_lan 'eth0' 'static'
 [ -d /sys/class/net/eth1 ] && ucidef_set_interface_wan 'eth1'
 
 board_config_flush

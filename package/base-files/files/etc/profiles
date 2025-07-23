@@ -130,8 +130,7 @@ config globals 'globals'
 
 config interface 'lan'
 	option proto 'static'
-	option ipaddr '192.168.10.1'
-	option netmask '255.255.255.0'
+	option ipaddr '192.168.32.10/24'
 	option ip6assign '60'
 	option delegate '0'
 	option device 'br-lan'
@@ -169,8 +168,7 @@ config globals 'globals'
 config interface 'lan'
 	option type 'bridge'
 	option proto 'static'
-	option ipaddr '192.168.10.1'
-	option netmask '255.255.255.0'
+	option ipaddr '192.168.32.10/24'
 	option ip6assign '60'
 	option ifname 'eth0'
 	option delegate '0'
@@ -296,48 +294,41 @@ function k_change_ip() {
   export k_ip=" 请输入新IPv4地址(Input new IPv4)"
   echo
   while :; do
-  domainy=""
-  read -p " ${k_ip}：" keyip
-  if [[ -n "${keyip}" ]] && [[ "$(echo ${keyip} |grep -Eoc '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')" == '1' ]]; then
-    keyipy="Y"
-  fi 
-    if [[ -n "${keyip}" ]] && [[ ${keyip} == 'q'  ||  ${keyip} == 'Q'  ]]; then
-    keyipy="Q"
-  fi
+    read -p " ${k_ip}：" keyip
 
-  case $keyipy in
-  Y)
-    export keyipn="${keyip}"
-    echo " 修改中，请稍等...( please wait... )" 
-    uci set network.lan.proto='static'
-    uci set network.lan.ipaddr="${keyip}"
-    uci del dhcp.lan.ignore
-    uci del dhcp.lan.dynamicdhcp
-    uci set dhcp.lan.force='1'
-    uci commit network
-    ER " 您的IP已经改为(Your IP has been changed to)：${keyip}！"
-    [ -s /etc/config/netwizard ] && uci -q set netwizard.default.lan_ipaddr="${keyip}" && uci commit netwizard 
-    /etc/init.d/network restart
-    pwait
-    uci set network.lan.ipaddr="${keyip}"
-    uci commit network
-    /etc/init.d/network restart
-    . /etc/profiles 
-  ;; 
+    # 自动补全/24
+    if [[ -n "${keyip}" ]] && [[ "$(echo ${keyip} | grep -Eoc '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')" == '1' ]]; then
+      [[ ! "$keyip" =~ / ]] && keyip="${keyip}/24"
+      keyipy="Y"
+    fi
 
- Q)
-    . /etc/profiles 
+    [[ "${keyip}" =~ ^[qQ]$ ]] && keyipy="Q"
 
-;;
-
-  *) 
-  echo 
-  echo -e " q. 返回(return) ,当前IPv4：${IP_Address}"
-  export k_ip=" 输入正确格式IP地址[x.x.x.x](enter IP address format[x.x.x.x])"
-  ;;
-  esac
+    case $keyipy in
+      Y)
+        echo " 修改中..."
+        uci set network.lan.proto='static'
+        uci set network.lan.ipaddr="${keyip}" 
+        uci del network.lan.netmask 2>/dev/null
+        uci del dhcp.lan.ignore 2>/dev/null
+        uci del dhcp.lan.dynamicdhcp 2>/dev/null
+        uci set dhcp.lan.force='1'
+        uci commit network
+        ER " IP已修改为：${keyip}！"
+        [ -s /etc/config/netwizard ] && uci -q set netwizard.default.lan_ipaddr="${keyip%/*}" && uci commit netwizard
+        /etc/init.d/network restart
+        . /etc/profiles
+        ;;
+      Q)
+        . /etc/profiles
+        ;;
+      *)
+        echo -e " 请输入合法IP [x.x.x.x或x.x.x.x/24]"
+        ;;
+    esac
   done
 }
+
 function k_clear() {
 while :; do 
 echo -e "\n q. 返回(return)"
@@ -815,5 +806,6 @@ function mainmenu() {
 }
 
 mainmenu
+
 
 

@@ -25,6 +25,29 @@ backup_config() {
 # 脚本起始处立即执行备份
 backup_config
 
+# 配置参数
+BACKUP_SOURCE="/home/zuoxm/backup/immortalwrt/files"
+TARGET_DIR="files"
+
+# 检查并恢复files目录
+restore_files() {
+    if [ ! -d "$TARGET_DIR" ]; then
+        if [ -d "$BACKUP_SOURCE" ]; then
+            echo -e "${CYAN}▶ 恢复files目录...${NC}"
+            if cp -r "$BACKUP_SOURCE" .; then
+                echo -e "${GREEN}✓ files目录恢复完成${NC}"
+            else
+                echo -e "${RED}❌ files目录恢复失败！${NC}"
+                exit 1
+            fi
+        else
+            echo -e "${YELLOW}⚠️ 备份源不存在: $BACKUP_SOURCE ${NC}"
+        fi
+    else
+        echo -e "${BLUE}ℹ️ files目录已存在，跳过恢复${NC}"
+    fi
+}
+
 # 确保目录存在并写入编译信息
 mkdir -p files/etc/ && \
 echo "Z-ImmortalWrt $(date +"%Y%m%d%H%M") by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info

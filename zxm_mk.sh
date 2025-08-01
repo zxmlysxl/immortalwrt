@@ -6,7 +6,7 @@ set -e
 backup_config() {
     local backup_dir="/home/zuoxm/backup/immortalwrt"
     local timestamp=$(date +"%Y%m%d-%H%M%S")
-    local backup_file="${backup_dir}/config-${timestamp}"
+    local backup_file="${backup_dir}/.config-${timestamp}"
     
     mkdir -p "$backup_dir"
     
@@ -176,8 +176,33 @@ quick_compile() {
     echo -e "\n${GREEN}✅ 快速编译成功!${NC}"
 }
 
-# 其他函数保持不变（calc_jobs/check_deps/check_disk_space/show_menu等）
-# [...] (保留之前的函数定义)
+# 命令行模式
+if [ "$1" ]; then
+    case "$1" in
+        "full") full_compile ;;
+        "quick") quick_compile ;;
+        *) echo -e "用法: $0 [full|quick]"; exit 1 ;;
+    esac
+    exit 0
+fi
+
+# 交互式菜单
+show_menu() {
+    echo -e "\n${BLUE}OpenWrt 编译助手${NC}"
+    echo "1) 完整编译"
+    echo "2) 快速编译"
+    echo "3) 退出"
+    
+    while true; do
+        read -p "请选择: " choice
+        case $choice in
+            1) full_compile; break ;;
+            2) quick_compile; break ;;
+            3) exit 0 ;;
+            *) echo -e "${RED}无效选项!${NC}" ;;
+        esac
+    done
+}
 
 # 初始化
 check_deps

@@ -2,6 +2,31 @@
 
 set -e
 
+# 初始备份（脚本启动立即执行）
+backup_config() {
+    local backup_dir="/home/zuoxm/backup/immortalwrt"
+    local timestamp=$(date +"%Y%m%d-%H%M%S")
+    local backup_file="${backup_dir}/config-${timestamp}"
+    
+    mkdir -p "$backup_dir"
+    
+    if [ -f .config ]; then
+        if cp .config "$backup_file"; then
+            echo -e "${GREEN}✓ 配置已备份: ${backup_file}${NC}"
+        else
+            echo -e "${RED}❌ 备份失败！请检查目录权限${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${YELLOW}⚠️ 未找到.config文件，跳过备份${NC}"
+    fi
+}
+
+# 脚本起始处立即执行备份
+backup_config
+
+# 确保目录存在并写入编译信息
+mkdir -p files/etc/ && \
 echo "Z-ImmortalWrt $(date +"%Y%m%d%H%M") by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
 
 # 配置
@@ -17,6 +42,36 @@ YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 CYAN='\033[1;36m'
 NC='\033[0m' # No Color
+
+# 计算可用CPU核心数（留1个核心给系统）
+calc_jobs() {
+    local total_cores=$(nproc --all)
+    echo $((total_cores > 1 ? total_cores - 1 : 1))
+}
+
+# 检查依赖工具
+check_deps() {
+    local missing=()
+    for cmd in git make rsync wget; do
+        if ! command -v $cmd &>/dev/null; then
+            missing+=("$cmd")
+        fi
+    done
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo -e "${RED}❌ 缺少依赖工具: ${missing[*]}${NC}"
+        exit 1
+    fi
+}
+
+# 检查磁盘空间
+check_disk_space() {
+    local free_space=$(df -BG . | awk 'NR==2 {print $4}' | tr -d 'G')
+    if [ "$free_space" -lt "$MIN_FREE_SPACE_GB" ]; then
+        echo -e "${RED}❌ 磁盘空间不足! 需要至少 ${MIN_FREE_SPACE_GB}G，当前剩余 ${free_space}G${NC}"
+        exit 1
+    fi
+}
 
 # 动态计时函数 (需安装pv)
 dynamic_timer() {

@@ -38,6 +38,8 @@ backup_config() {
 
 # 脚本起始处立即执行备份
 log "========== 开始本次编译 =========="
+log "清空build.log"
+rm build.log
 
 # 配置参数
 BACKUP_SOURCE="/home/zuoxm/backup/immortalwrt/files"
@@ -231,6 +233,7 @@ common_compile() {
     
     dynamic_timer "更新 feeds" "./scripts/feeds update -a"
     dynamic_timer "安装 feeds" "./scripts/feeds install -a"
+    dynamic_timer "安装 zuoxm包" "./scripts/feeds install -a -p zuoxm -f"
     
     # 添加带15秒倒计时的menuconfig提示
     echo -e "\n${YELLOW}════════════════════════════════════════${NC}"

@@ -316,7 +316,7 @@ quick_compile() {
 # 交互式菜单
 show_menu() {
     log "显示交互菜单"
-    echo -e "\n${BLUE}OpenWrt编译助手 (多核优化版)${NC}"
+    echo -e "\n${BLUE}ImmortalWrt编译助手 (多核优化版)${NC}"
     echo "1) 完整编译"
     echo "2) 增量编译"
     echo "3) 退出"
@@ -341,4 +341,4 @@ log "开始初始化检查"
 check_deps
 check_disk_space
 show_menu
-log "===== 编译脚本执行完成 ====="
+log "======== 编译脚本执行完成 ========"

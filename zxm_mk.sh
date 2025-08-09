@@ -2,8 +2,11 @@
 
 set -e
 
-# 日志文件设置（放在当前文件夹下）
+# 日志文件设置
 LOG_FILE="z-$(date +"%Y%m%d").log"
+# 配置参数
+BACKUP_SOURCE="/home/zuoxm/backup/immortalwrt/files"
+TARGET_DIR="files"
 
 # 日志记录函数
 log() {
@@ -11,11 +14,11 @@ log() {
     echo "[$timestamp] $1" >> "$LOG_FILE"
 }
 
-# 初始备份（脚本启动立即执行）
+# 备份.config
 backup_config() {
     local backup_dir="/home/zuoxm/backup/immortalwrt"
     local timestamp=$(date +"%Y%m%d")
-    local backup_file="${backup_dir}/.config-${timestamp}"
+    local backup_file="${backup_dir}/.config-${timestamp}成功"
     
     mkdir -p "$backup_dir"
     
@@ -36,33 +39,31 @@ backup_config() {
     log "备份配置完成"
 }
 
-# 脚本起始处立即执行备份
-log "========== 开始本次编译 =========="
-log "清空build.log"
-rm build.log
-
-# 配置参数
-BACKUP_SOURCE="/home/zuoxm/backup/immortalwrt/files"
-TARGET_DIR="files"
-
 # 检查并恢复files目录
 restore_files() {
-    if [ ! -d "$TARGET_DIR" ]; then
-        if [ -d "$BACKUP_SOURCE" ]; then
-            echo -e "${CYAN}▶ 恢复files目录...${NC}"
-            if cp -r "$BACKUP_SOURCE" .; then
-                echo -e "${GREEN}✓ files目录恢复完成${NC}"
-            else
-                echo -e "${RED}❌ files目录恢复失败！${NC}"
-                exit 1
-            fi
-        else
-            echo -e "${YELLOW}⚠️ 备份源不存在: $BACKUP_SOURCE ${NC}"
-        fi
-    else
-        echo -e "${BLUE}ℹ️ files目录已存在，跳过恢复${NC}"
-    fi
+     if [ -d "$BACKUP_SOURCE" ]; then
+          echo -e "${CYAN}▶ 恢复files目录...${NC}"
+          if cp -r "$BACKUP_SOURCE" .; then
+              echo -e "${GREEN}✓ files目录恢复完成${NC}"
+          else
+              echo -e "${RED}❌ files目录恢复失败！${NC}"
+              exit 1
+          fi
+      else
+
+          echo -e "${YELLOW}⚠️ 备份源不存在: $BACKUP_SOURCE ${NC}"
+      fi
+
 }
+
+# 脚本起始处立即执行备份
+log "========== 开始本次编译 =========="
+echo "========== 开始本次编译 =========="
+log "清空build.log"
+echo "清空build.log"
+rm -f build.log
+#恢复文件
+restore_files
 
 # 确保目录存在并写入编译信息
 mkdir -p files/etc/ && \
@@ -72,6 +73,7 @@ echo "Z-ImmortalWrt $(date +"%Y%m%d%H%M") by zuoxm | R$(date +%y.%m.%d)" > files
 BUILD_LOG="build.log"          # 编译日志路径
 MIN_FREE_SPACE_GB=10          # 降低磁盘空间要求
 AUTO_PULL_TIMEOUT=3           # git pull 自动确认倒计时(秒)
+MENU_TIMEOUT=15               # 新增：菜单选择超时时间(秒)
 
 # 颜色定义
 RED='\033[1;31m'
@@ -87,29 +89,26 @@ calc_jobs() {
     local total_cores=$(nproc --all)
     local available_mem=$(free -g | awk '/Mem:/ {print $7}')
     
-    # 确保available_mem是数字
     if ! [[ "$available_mem" =~ ^[0-9]+$ ]]; then
-        available_mem=$(free -g | awk '/Mem:/ {print $4}')  # 尝试获取不同的列
+        available_mem=$(free -g | awk '/Mem:/ {print $4}')
     fi
     
-    # 内存限制规则：
     if [ "$available_mem" -lt 6 ] 2>/dev/null; then
         log "内存不足，使用2线程"
-        echo 2   # 内存不足时强制2线程
+        echo 2
     else
-        # 不超过总核心数且至少保留1GB内存
-        local jobs=$(( total_cores > 8 ? 8 : total_cores ))  # 最大不超过8线程
+        local jobs=$(( total_cores > 8 ? 8 : total_cores ))
         log "计算得出使用 $jobs 线程"
         echo $jobs
     fi
     log "计算编译线程数完成"
 }
 
-# 下载线程计算（独立于编译线程）
+# 下载线程计算
 calc_dl_threads() {
     log "开始计算下载线程数"
     local total_cores=$(nproc --all)
-    local threads=$(( total_cores > 8 ? 8 : total_cores ))  # 下载最大8线程
+    local threads=$(( total_cores > 8 ? 8 : total_cores ))
     log "计算得出使用 $threads 下载线程"
     echo $threads
 }
@@ -144,17 +143,15 @@ check_disk_space() {
     log "磁盘空间检查完成，剩余 ${free_space}G"
 }
 
-# 动态计时函数 (需安装pv)
+# 动态计时函数
 dynamic_timer() {
     local msg="$1"
     local cmd="$2"
     
-    # 时间格式化函数（内部使用）
     format_time() {
         local total_seconds=$1
         local minutes=$((total_seconds / 60))
         local seconds=$((total_seconds % 60))
-        
         if (( minutes > 0 )); then
             printf "%d分%02d秒" "$minutes" "$seconds"
         else
@@ -166,19 +163,12 @@ dynamic_timer() {
     echo -ne "${CYAN}▶ ${msg}...0秒${NC}"
     local start=$(date +%s)
     
-    # 执行命令（后台运行）
-    (eval "$cmd" &>> "$BUILD_LOG") &
-    local pid=$!
+    # 修复：使用临时文件捕获输出
+    local temp_log=$(mktemp)
+    { eval "$cmd" 2>&1; echo $? > /tmp/exit_status; } | tee -a "$BUILD_LOG" > "$temp_log"
+    local status=$(</tmp/exit_status)
+    rm -f /tmp/exit_status
     
-    # 动态计时循环
-    while kill -0 "$pid" 2>/dev/null; do
-        local elapsed=$(( $(date +%s) - start ))
-        echo -ne "\r${CYAN}▶ ${msg}...$(format_time $elapsed)${NC}"
-        sleep 1
-    done
-    
-    wait "$pid"  # 等待命令完成
-    local status=$?
     local elapsed=$(( $(date +%s) - start ))
     
     if [ $status -eq 0 ]; then
@@ -187,11 +177,15 @@ dynamic_timer() {
     else
         log "$msg 失败 (耗时: $(format_time $elapsed))"
         echo -e "\r${RED}✗ ${msg}失败 ($(format_time $elapsed))${NC} "
+        # 显示最后5行错误日志
+        tail -n 5 "$temp_log" | sed 's/^/    /'
+        rm -f "$temp_log"
         exit 1
     fi
+    rm -f "$temp_log"
 }
 
-# 检查git更新（带倒计时自动确认）
+# 检查git更新
 check_git_updates() {
     log "开始检查Git更新"
     git remote update &>/dev/null
@@ -202,7 +196,6 @@ check_git_updates() {
         log "发现远程仓库更新"
         echo -e "${YELLOW}⚠️  发现远程仓库更新${NC}"
         
-        # 倒计时自动确认
         for (( i=AUTO_PULL_TIMEOUT; i>0; i-- )); do
             printf "\r${CYAN}将在 %d 秒后自动更新 (按任意键取消)...${NC}" "$i"
             read -t 1 -n 1 -r && break
@@ -227,6 +220,7 @@ check_git_updates() {
     log "Git更新检查完成"
 }
 
+# 核心编译流程
 common_compile() {
     local DL_THREADS=$(calc_dl_threads)
     local COMPILE_JOBS=$(calc_jobs)
@@ -235,45 +229,18 @@ common_compile() {
     dynamic_timer "安装 feeds" "./scripts/feeds install -a"
     dynamic_timer "安装 zuoxm包" "./scripts/feeds install -a -p zuoxm -f"
     
-    # 添加带15秒倒计时的menuconfig提示
-    echo -e "\n${YELLOW}════════════════════════════════════════${NC}"
-    echo -e "${YELLOW}  是否要现在调整配置选项？（15秒后自动继续）${NC}"
-    echo -e "${CYAN}  输入 ${GREEN}Y${CYAN} 进入menuconfig界面修改配置${NC}"
-    echo -e "${CYAN}  输入 ${GREEN}N${CYAN} 或直接回车继续编译流程${NC}"
-    echo -e "${YELLOW}════════════════════════════════════════${NC}"
-    
-    # 15秒倒计时逻辑
-    for (( i=15; i>0; i-- )); do
-        printf "\r${BLUE}剩余时间: %2d 秒 (自动选择N)${NC} " "$i"
-        if read -t 1 -n 1 -r answer; then
-            echo  # 用户输入后换行
-            REPLY="$answer"
+    # 带超时的menuconfig提示（新增）
+    echo -e "\n${YELLOW}是否要调整配置? (${MENU_TIMEOUT}秒后自动跳过)${NC}"
+    for (( i=MENU_TIMEOUT; i>0; i-- )); do
+        printf "\r${CYAN}剩余时间: %2d秒 (按Y进入配置)${NC}" "$i"
+        if read -t 1 -n 1 -r && [[ $REPLY =~ [Yy] ]]; then
+            echo
+            make menuconfig
             break
         fi
     done
     
-    # 用户未输入时自动继续
-    if [ -z "$REPLY" ]; then
-        echo -e "\n${BLUE}ℹ️ 超时未选择，自动继续编译...${NC}"
-        REPLY="n"
-    fi
-    
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log "用户选择修改menuconfig"
-        echo -e "\n${GREEN}▶ 启动menuconfig配置界面...${NC}"
-        echo -e "${CYAN}修改完成后，退出界面将自动继续编译${NC}"
-        make menuconfig
-        echo -e "\n${GREEN}✓ menuconfig配置已完成${NC}"
-    else
-        log "用户跳过menuconfig修改"
-        echo -e "\n${BLUE}ℹ️ 使用现有配置继续编译...${NC}"
-    fi
-    
-    # 备份.config
-    backup_config
-    
-    # 使用更多线程下载
-    echo -e "\n${CYAN}▶ 使用 ${DL_THREADS} 线程下载源码...${NC}"
+    # 修复：使用独立进程检查make返回值
     dynamic_timer "下载源码" "make download -j${DL_THREADS}"
     
     log "开始编译 (使用 $COMPILE_JOBS 线程)"
@@ -281,28 +248,50 @@ common_compile() {
     echo -e "📝 日志实时输出到: ${YELLOW}$BUILD_LOG${NC}"
     
     local compile_start=$(date +%s)
-    if ! make -j$COMPILE_JOBS V=s 2>&1 | tee -a "$BUILD_LOG"; then
+    set +e  # 临时禁用set -e以捕获make错误
+    make -j$COMPILE_JOBS V=s 2>&1 | tee -a "$BUILD_LOG"
+    local make_status=${PIPESTATUS[0]}
+    set -e
+    
+    if [ $make_status -ne 0 ]; then
         log "编译失败! (总耗时: $(($(date +%s)-compile_start))秒)"
         echo -e "${RED}❌ 编译失败! (总耗时: $(($(date +%s)-compile_start))秒)${NC}"
+        echo -e "${YELLOW}最后5行错误日志:${NC}"
+        tail -n 5 "$BUILD_LOG" | sed 's/^/    /'
         exit 1
+    else
+        log "编译成功! (总耗时: $(($(date +%s)-compile_start))秒)"
+        echo -e "${GREEN}✓ 编译成功! (总耗时: $(($(date +%s)-compile_start))秒)${NC}"
+        backup_config
+        
+        # ▼▼▼ 新增：编译成功后自动上传 ▼▼▼
+        echo -e "\n${BLUE}⚡ 编译成功，开始上传固件...${NC}"
+        if [ -f "/home/zuoxm/backup/immortalwrt/auto_upload.sh" ]; then
+            /home/zuoxm/backup/immortalwrt/auto_upload.sh && {
+                echo -e "${GREEN}✓ 固件上传完成！${NC}"
+                log "固件上传成功"
+            } || {
+                echo -e "${RED}❌ 固件上传失败！${NC}"
+                log "固件上传失败"
+                exit 1  # 上传失败时终止脚本
+            }
+        else
+            echo -e "${YELLOW}⚠️ 未找到上传脚本，跳过上传${NC}"
+            log "警告：上传脚本不存在"
+        fi
+        # ▲▲▲ 新增代码结束 ▲▲▲
     fi
-    log "编译成功! (总耗时: $(($(date +%s)-compile_start))秒)"
-    echo -e "${GREEN}✓ 编译成功! (总耗时: $(($(date +%s)-compile_start))秒)${NC}"
 }
 
-# 完整编译（内存优化版）
+# 完整编译
 full_compile() {
     log "开始完整编译流程"
     echo -e "\n${YELLOW}⚡ 执行内存安全完整编译...${NC}"
     check_git_updates
-    
     echo -e "${YELLOW}♻️ 轻量级清理...${NC}"
-    dynamic_timer "make clean" "make clean"  # 不执行dirclean节省内存
-    
+    dynamic_timer "make clean" "make clean"
     common_compile
     echo -e "\n${GREEN}✅ 完整编译完成!${NC}"
-    echo -e "${BLUE}ℹ️ 内存使用报告:${NC}"
-    free -h | tee -a "$LOG_FILE"
     log "完整编译流程完成"
 }
 
@@ -316,32 +305,33 @@ quick_compile() {
     log "增量编译流程完成"
 }
 
-# 交互式菜单
-show_menu() {
-    log "显示交互菜单"
-    echo -e "\n${BLUE}ImmortalWrt编译助手 (多核优化版)${NC}"
-    echo "1) 完整编译"
-    echo "2) 增量编译"
-    echo "3) 退出"
+# 超时自动选择菜单
+timeout_menu() {
+    echo -e "\n${BLUE}请选择编译模式 (${MENU_TIMEOUT}秒后自动选增量编译)${NC}"
+    echo "1) 完整编译 (耗时较长)"
+    echo "2) 增量编译 (推荐)"
     
-    while true; do
-        read -p "请选择: " choice
-        case $choice in
-            1) full_compile; break ;;
-            2) quick_compile; break ;;
-            3) log "用户选择退出"; exit 0 ;;
-            *) 
-                log "无效选项: $choice"
-                echo -e "${RED}无效选项!${NC}" 
-            ;;
-        esac
+    for (( i=MENU_TIMEOUT; i>0; i-- )); do
+        printf "\r${YELLOW}剩余时间: %2d秒 (默认2)${NC}" "$i"
+        if read -t 1 -n 1 -r choice; then
+            echo
+            case $choice in
+                1) full_compile; break ;;
+                2) quick_compile; break ;;
+                *) echo -e "${RED}无效输入!${NC}"; continue ;;
+            esac
+        fi
     done
-    log "菜单选择完成"
+    
+    # 超时默认选择
+    if [ $i -eq 0 ]; then
+        echo -e "\n${GREEN}▶ 超时未选择，默认执行增量编译${NC}"
+        quick_compile
+    fi
 }
 
-# 初始化
-log "开始初始化检查"
+# 主流程
 check_deps
 check_disk_space
-show_menu
+timeout_menu
 log "======== 编译脚本执行完成 ========"

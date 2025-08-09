@@ -229,14 +229,21 @@ common_compile() {
     dynamic_timer "安装 feeds" "./scripts/feeds install -a"
     dynamic_timer "安装 zuoxm包" "./scripts/feeds install -a -p zuoxm -f"
     
-    # 带超时的menuconfig提示（新增）
+    # 带超时的menuconfig提示
     echo -e "\n${YELLOW}是否要调整配置? (${MENU_TIMEOUT}秒后自动跳过)${NC}"
     for (( i=MENU_TIMEOUT; i>0; i-- )); do
-        printf "\r${CYAN}剩余时间: %2d秒 (按Y进入配置)${NC}" "$i"
-        if read -t 1 -n 1 -r && [[ $REPLY =~ [Yy] ]]; then
-            echo
-            make menuconfig
-            break
+        printf "\r${CYAN}剩余时间: %2d秒 (按Y进入配置，其他键继续)${NC}" "$i"
+        if read -t 1 -n 1 -r; then
+           echo  # 换行
+           if [[ $REPLY =~ [Yy] ]]; then
+                # 进入menuconfig，退出后会继续后续编译
+                make menuconfig
+                break
+            else
+                # 按其他键立即继续
+                echo -e "${GREEN}跳过配置调整，继续编译...${NC}"
+                break
+            fi
         fi
     done
     
@@ -303,6 +310,7 @@ quick_compile() {
     common_compile
     echo -e "\n${GREEN}✅ 增量编译完成!${NC}"
     log "增量编译流程完成"
+    exit 0
 }
 
 # 超时自动选择菜单

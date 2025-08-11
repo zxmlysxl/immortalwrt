@@ -39,6 +39,30 @@ backup_config() {
     log "备份配置完成"
 }
 
+# 重命名EFI固件文件
+rename_efi_image() {
+    log "开始重命名EFI固件文件"
+    local build_date=$(date +"%Y%m%d")
+    local efi_image=$(find bin/targets -name "*-efi.img.gz" | head -n 1)
+    
+    if [ -n "$efi_image" ]; then
+        local dir_name=$(dirname "$efi_image")
+        local new_name="Z-ImmWrt-${build_date}-zuoxm-x86_64-efi.img.gz"
+        
+        if mv "$efi_image" "${dir_name}/${new_name}"; then
+            log "固件重命名成功: ${new_name}"
+            echo -e "${GREEN}✓ 固件已重命名为: ${new_name}${NC}"
+        else
+            log "固件重命名失败"
+            echo -e "${RED}❌ 固件重命名失败${NC}"
+        fi
+    else
+        log "未找到EFI固件文件"
+        echo -e "${YELLOW}⚠️ 未找到EFI固件文件${NC}"
+    fi
+    log "重命名EFI固件文件完成"
+}
+
 # 检查并恢复files目录
 restore_files() {
      if [ -d "$BACKUP_SOURCE" ]; then
@@ -50,10 +74,8 @@ restore_files() {
               exit 1
           fi
       else
-
           echo -e "${YELLOW}⚠️ 备份源不存在: $BACKUP_SOURCE ${NC}"
       fi
-
 }
 
 # 脚本起始处立即执行备份
@@ -269,6 +291,10 @@ common_compile() {
     else
         log "编译成功! (总耗时: $(($(date +%s)-compile_start))秒)"
         echo -e "${GREEN}✓ 编译成功! (总耗时: $(($(date +%s)-compile_start))秒)${NC}"
+        
+        # 重命名EFI固件文件
+        rename_efi_image
+        
         backup_config
         
         # ▼▼▼ 新增：编译成功后自动上传 ▼▼▼
@@ -300,7 +326,6 @@ full_compile() {
     common_compile
     echo -e "\n${GREEN}✅ 完整编译完成!${NC}"
     log "完整编译流程完成"
-    exit 0
 }
 
 # 增量编译
@@ -311,7 +336,6 @@ quick_compile() {
     common_compile
     echo -e "\n${GREEN}✅ 增量编译完成!${NC}"
     log "增量编译流程完成"
-    exit 0
 }
 
 # 超时自动选择菜单
@@ -325,8 +349,8 @@ timeout_menu() {
         if read -t 1 -n 1 -r choice; then
             echo
             case $choice in
-                1) full_compile; break ;;
-                2) quick_compile; break ;;
+                1) full_compile; exit 0 ;;
+                2) quick_compile; exit 0 ;;
                 *) echo -e "${RED}无效输入!${NC}"; continue ;;
             esac
         fi
@@ -336,6 +360,7 @@ timeout_menu() {
     if [ $i -eq 0 ]; then
         echo -e "\n${GREEN}▶ 超时未选择，默认执行增量编译${NC}"
         quick_compile
+        exit 0
     fi
 }
 

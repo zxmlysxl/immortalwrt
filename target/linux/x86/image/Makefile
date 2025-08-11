@@ -156,4 +156,3 @@ endef
 include $(SUBTARGET).mk
 
 $(eval $(call BuildImage))
-

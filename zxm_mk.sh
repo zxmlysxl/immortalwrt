@@ -300,6 +300,7 @@ full_compile() {
     common_compile
     echo -e "\n${GREEN}✅ 完整编译完成!${NC}"
     log "完整编译流程完成"
+    exit 0
 }
 
 # 增量编译

@@ -39,7 +39,7 @@ backup_config() {
     log "备份配置完成"
 }
 
-# 重命名EFI固件文件
+#重命名固件
 rename_efi_image() {
     log "开始重命名EFI固件文件"
     local build_date=$(date +"%Y%m%d")
@@ -47,15 +47,48 @@ rename_efi_image() {
     
     if [ -n "$efi_image" ]; then
         local dir_name=$(dirname "$efi_image")
-        local new_name="Z-ImmWrt-${build_date}-zuoxm-x86_64-efi.img.gz"
+        local base_name=$(basename "$efi_image" .img.gz)
+        local new_name="Z-ImmWrt-${build_date}-zuoxm-x86_64-efi"
         
-        if mv "$efi_image" "${dir_name}/${new_name}"; then
-            log "固件重命名成功: ${new_name}"
-            echo -e "${GREEN}✓ 固件已重命名为: ${new_name}${NC}"
+        # 创建临时目录
+        local temp_dir=$(mktemp -d)
+        
+        # 解压.gz文件
+        if gunzip -c "$efi_image" > "${temp_dir}/${base_name}.img"; then
+            log "解压EFI固件成功"
+            
+            # 检查是否需要重命名（如果名称不同）
+            if [ "${base_name}.img" != "${new_name}.img" ]; then
+                # 重命名.img文件
+                if mv "${temp_dir}/${base_name}.img" "${temp_dir}/${new_name}.img"; then
+                    log "内部.img文件重命名成功"
+                else
+                    log "内部.img文件重命名失败"
+                    echo -e "${RED}❌ 内部.img文件重命名失败${NC}"
+                    rm -rf "$temp_dir"
+                    return 1
+                fi
+            else
+                log "内部.img文件无需重命名"
+            fi
+            
+            # 重新压缩为.gz文件
+            if gzip -c "${temp_dir}/${new_name}.img" > "${dir_name}/${new_name}.img.gz"; then
+                log "固件重压缩成功"
+                rm "$efi_image"  # 删除原文件
+                log "固件重命名成功: ${new_name}.img.gz"
+                echo -e "${GREEN}✓ 固件已重命名为: ${new_name}.img.gz${NC}"
+            else
+                log "固件重压缩失败"
+                echo -e "${RED}❌ 固件重压缩失败${NC}"
+            fi
         else
-            log "固件重命名失败"
-            echo -e "${RED}❌ 固件重命名失败${NC}"
+            log "解压EFI固件失败"
+            echo -e "${RED}❌ 解压EFI固件失败${NC}"
         fi
+        
+        # 清理临时目录
+        rm -rf "$temp_dir"
     else
         log "未找到EFI固件文件"
         echo -e "${YELLOW}⚠️ 未找到EFI固件文件${NC}"
@@ -78,6 +111,48 @@ restore_files() {
       fi
 }
 
+# 上传固件和插件
+upload_artifacts() {
+    local upload_firmware=$1
+    local upload_plugins=$2
+    
+    if [ "$upload_firmware" -eq 1 ]; then
+        echo -e "\n${BLUE}⚡ 开始上传固件...${NC}"
+        if [ -f "/home/zuoxm/backup/immortalwrt/auto_upload.sh" ]; then
+            /home/zuoxm/backup/immortalwrt/auto_upload.sh && {
+                echo -e "${GREEN}✓ 固件上传完成！${NC}"
+                log "固件上传成功"
+            } || {
+                echo -e "${RED}❌ 固件上传失败！${NC}"
+                log "固件上传失败"
+                return 1
+            }
+        else
+            echo -e "${YELLOW}⚠️ 未找到固件上传脚本，跳过上传${NC}"
+            log "警告：固件上传脚本不存在"
+        fi
+    fi
+    
+    if [ "$upload_plugins" -eq 1 ]; then
+        echo -e "\n${BLUE}⚡ 开始上传插件...${NC}"
+        if [ -f "/home/zuoxm/backup/immortalwrt/upload_plugins.sh" ]; then
+            /home/zuoxm/backup/immortalwrt/upload_plugins.sh && {
+                echo -e "${GREEN}✓ 插件上传完成！${NC}"
+                log "插件上传成功"
+            } || {
+                echo -e "${RED}❌ 插件上传失败！${NC}"
+                log "插件上传失败"
+                return 1
+            }
+        else
+            echo -e "${YELLOW}⚠️ 未找到插件上传脚本，跳过上传${NC}"
+            log "警告：插件上传脚本不存在"
+        fi
+    fi
+    
+    return 0
+}
+
 # 脚本起始处立即执行备份
 log "========== 开始本次编译 =========="
 echo "========== 开始本次编译 =========="
@@ -95,7 +170,8 @@ echo "Z-ImmortalWrt $(date +"%Y%m%d%H%M") by zuoxm | R$(date +%y.%m.%d)" > files
 BUILD_LOG="build.log"          # 编译日志路径
 MIN_FREE_SPACE_GB=10          # 降低磁盘空间要求
 AUTO_PULL_TIMEOUT=3           # git pull 自动确认倒计时(秒)
-MENU_TIMEOUT=15               # 新增：菜单选择超时时间(秒)
+MENU_TIMEOUT=15               # 菜单选择超时时间(秒)
+UPLOAD_TIMEOUT=5              # 上传选择超时时间(秒)
 
 # 颜色定义
 RED='\033[1;31m'
@@ -185,11 +261,13 @@ dynamic_timer() {
     echo -ne "${CYAN}▶ ${msg}...0秒${NC}"
     local start=$(date +%s)
     
-    # 修复：使用临时文件捕获输出
-    local temp_log=$(mktemp)
-    { eval "$cmd" 2>&1; echo $? > /tmp/exit_status; } | tee -a "$BUILD_LOG" > "$temp_log"
-    local status=$(</tmp/exit_status)
-    rm -f /tmp/exit_status
+    # 直接执行命令并捕获状态
+    local status=0
+    if eval "$cmd" 2>&1 | tee -a "$BUILD_LOG"; then
+        status=${PIPESTATUS[0]}
+    else
+        status=${PIPESTATUS[0]}
+    fi
     
     local elapsed=$(( $(date +%s) - start ))
     
@@ -200,11 +278,9 @@ dynamic_timer() {
         log "$msg 失败 (耗时: $(format_time $elapsed))"
         echo -e "\r${RED}✗ ${msg}失败 ($(format_time $elapsed))${NC} "
         # 显示最后5行错误日志
-        tail -n 5 "$temp_log" | sed 's/^/    /'
-        rm -f "$temp_log"
+        tail -n 5 "$BUILD_LOG" | sed 's/^/    /'
         exit 1
     fi
-    rm -f "$temp_log"
 }
 
 # 检查git更新
@@ -244,6 +320,8 @@ check_git_updates() {
 
 # 核心编译流程
 common_compile() {
+    local upload_firmware=$1  # 接收上传固件参数
+    local upload_plugins=$2   # 接收上传插件参数
     local DL_THREADS=$(calc_dl_threads)
     local COMPILE_JOBS=$(calc_jobs)
     
@@ -297,71 +375,100 @@ common_compile() {
         
         backup_config
         
-        # ▼▼▼ 新增：编译成功后自动上传 ▼▼▼
-        echo -e "\n${BLUE}⚡ 编译成功，开始上传固件...${NC}"
-        if [ -f "/home/zuoxm/backup/immortalwrt/auto_upload.sh" ]; then
-            /home/zuoxm/backup/immortalwrt/auto_upload.sh && {
-                echo -e "${GREEN}✓ 固件上传完成！${NC}"
-                log "固件上传成功"
-            } || {
-                echo -e "${RED}❌ 固件上传失败！${NC}"
-                log "固件上传失败"
-                exit 1  # 上传失败时终止脚本
-            }
-        else
-            echo -e "${YELLOW}⚠️ 未找到上传脚本，跳过上传${NC}"
-            log "警告：上传脚本不存在"
-        fi
-        # ▲▲▲ 新增代码结束 ▲▲▲
+        # 上传固件和插件
+        upload_artifacts $upload_firmware $upload_plugins
     fi
 }
 
 # 完整编译
 full_compile() {
+    local upload_firmware=$1  # 接收上传固件参数
+    local upload_plugins=$2   # 接收上传插件参数
     log "开始完整编译流程"
     echo -e "\n${YELLOW}⚡ 执行内存安全完整编译...${NC}"
     check_git_updates
-    echo -e "${YELLOW}♻️ 轻量级清理...${NC}"
-    dynamic_timer "make clean" "make clean"
-    common_compile
+    echo -e "${YELLOW}♻️ 保留配置清理...${NC}"
+    dynamic_timer "执行make dirclean" "make dirclean"
+    common_compile $upload_firmware $upload_plugins
     echo -e "\n${GREEN}✅ 完整编译完成!${NC}"
     log "完整编译流程完成"
 }
 
 # 增量编译
 quick_compile() {
+    local upload_firmware=$1  # 接收上传固件参数
+    local upload_plugins=$2   # 接收上传插件参数
     log "开始增量编译流程"
     echo -e "\n${YELLOW}⚡ 执行增量编译 (跳过清理)...${NC}"
     check_git_updates
-    common_compile
+    common_compile $upload_firmware $upload_plugins
     echo -e "\n${GREEN}✅ 增量编译完成!${NC}"
     log "增量编译流程完成"
 }
 
 # 超时自动选择菜单
 timeout_menu() {
+    # 默认选项
+    local default_compile=2      # 1=完整编译, 2=增量编译
+    local default_upload_firmware=1  # 0=不上传固件, 1=上传固件
+    local default_upload_plugins=1   # 0=不上传插件, 1=上传插件
+
     echo -e "\n${BLUE}请选择编译模式 (${MENU_TIMEOUT}秒后自动选增量编译)${NC}"
     echo "1) 完整编译 (耗时较长)"
     echo "2) 增量编译 (推荐)"
     
+    # 编译模式选择
     for (( i=MENU_TIMEOUT; i>0; i-- )); do
         printf "\r${YELLOW}剩余时间: %2d秒 (默认2)${NC}" "$i"
         if read -t 1 -n 1 -r choice; then
             echo
             case $choice in
-                1) full_compile; exit 0 ;;
-                2) quick_compile; exit 0 ;;
-                *) echo -e "${RED}无效输入!${NC}"; continue ;;
+                1) default_compile=1; break ;;
+                2) default_compile=2; break ;;
+                *) echo -e "${RED}无效输入!${NC}"; ((i++)); continue ;;
             esac
         fi
     done
     
-    # 超时默认选择
-    if [ $i -eq 0 ]; then
-        echo -e "\n${GREEN}▶ 超时未选择，默认执行增量编译${NC}"
-        quick_compile
-        exit 0
-    fi
+    # 上传固件选择
+    echo -e "\n${BLUE}是否上传固件? (${UPLOAD_TIMEOUT}秒后默认上传)${NC}"
+    echo "y) 上传固件 (推荐)"
+    echo "n) 不上传"
+    
+    for (( i=UPLOAD_TIMEOUT; i>0; i-- )); do
+        printf "\r${YELLOW}剩余时间: %2d秒 (默认y)${NC}" "$i"
+        if read -t 1 -n 1 -r upload; then
+            echo
+            case $upload in
+                [Yy]) default_upload_firmware=1; break ;;
+                [Nn]) default_upload_firmware=0; break ;;
+                *) echo -e "${RED}无效输入!${NC}"; ((i++)); continue ;;
+            esac
+        fi
+    done
+    
+    # 上传插件选择
+    echo -e "\n${BLUE}是否上传插件? (${UPLOAD_TIMEOUT}秒后默认上传)${NC}"
+    echo "y) 上传插件 (推荐)"
+    echo "n) 不上传"
+    
+    for (( i=UPLOAD_TIMEOUT; i>0; i-- )); do
+        printf "\r${YELLOW}剩余时间: %2d秒 (默认y)${NC}" "$i"
+        if read -t 1 -n 1 -r upload; then
+            echo
+            case $upload in
+                [Yy]) default_upload_plugins=1; break ;;
+                [Nn]) default_upload_plugins=0; break ;;
+                *) echo -e "${RED}无效输入!${NC}"; ((i++)); continue ;;
+            esac
+        fi
+    done
+    
+    # 执行选择
+    case $default_compile in
+        1) full_compile $default_upload_firmware $default_upload_plugins ;;
+        2) quick_compile $default_upload_firmware $default_upload_plugins ;;
+    esac
 }
 
 # 主流程

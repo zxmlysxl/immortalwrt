@@ -37,3 +37,4 @@ git-src
 .ccache
 .vscode*
 /*.log
+/zxm_mk.sh

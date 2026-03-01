@@ -35,11 +35,9 @@ jobs:
 
       - name: Apply .config
         run: |
-          if [ -f ".config" ]; then
-            cp .config ./
-          else
-            make defconfig
-          fi
+          ls -la .config || echo "No .config found"
+          cp -f .config .config.backup 2>/dev/null || true
+          make defconfig
 
       - name: Download toolchain
         run: make download -j$(nproc)

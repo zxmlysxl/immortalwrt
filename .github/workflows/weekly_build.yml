@@ -1,0 +1,77 @@
+name: Weekly Build
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # 每周日凌晨 2 点 UTC (北京时间 10:00)
+  workflow_dispatch:
+    inputs:
+      clean_build:
+        description: 'Clean build (rebuild everything)'
+        required: false
+        default: 'false'
+
+jobs:
+  build:
+    name: Build ImmortalWrt
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Initialize feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Copy custom files
+        run: |
+          if [ -d "files" ]; then
+            cp -rf files/* ./
+          fi
+
+      - name: Apply .config
+        run: |
+          if [ -f ".config" ]; then
+            cp .config .config
+          else
+            make defconfig
+          fi
+
+      - name: Download toolchain
+        run: make download -j$(nproc)
+
+      - name: Compile firmware
+        run: |
+          make -j$(nproc) || make -j1 V=s
+
+      - name: Package firmware
+        run: |
+          cd bin/targets/*/*
+          sha256sum * > sha256sums.txt
+
+      - name: Upload to Releases
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: weekly-build-${{ github.run_number }}
+          name: Weekly Build ${{ github.run_number }}
+          body: |
+            **Build Time:** ${{ github.event.head_commit.timestamp }}
+            **Commit:** ${{ github.sha }}
+            Auto-built firmware with custom configurations.
+          files: |
+            bin/targets/*/*/*.img.gz
+            bin/targets/*/*/*.bin
+            bin/targets/*/*/*.iso
+            bin/targets/*/*/*sha256sums.txt
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Build failed! Check logs."

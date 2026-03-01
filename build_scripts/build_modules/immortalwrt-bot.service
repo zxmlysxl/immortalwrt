@@ -1,0 +1,24 @@
+[Unit]
+Description=ImmortalWrt Telegram Compile Bot
+After=network.target
+Wants=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=zuoxm
+Group=zuoxm
+# 使用相对路径，让服务自动查找脚本目录
+Environment=SCRIPT_DIR=/home/zuoxm/backup/Immortalwrt
+Environment=PYTHONUNBUFFERED=1
+# 使用环境变量设置工作目录
+ExecStartPre=/bin/bash -c 'cd /home/zuoxm/backup/Immortalwrt/老版编译脚本'
+ExecStart=/usr/bin/python3 /home/zuoxm/backup/Immortalwrt/老版编译脚本/build_modules/telegram_bot_service.py
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=immortalwrt-bot
+
+[Install]
+WantedBy=multi-user.target

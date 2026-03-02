@@ -42,6 +42,11 @@ jobs:
       - name: Download toolchain
         run: make download -j$(nproc)
 
+      - name: Install qemu-img
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-utils
+
       - name: Compile firmware
         run: |
           make -j$(nproc) || make -j1 V=s

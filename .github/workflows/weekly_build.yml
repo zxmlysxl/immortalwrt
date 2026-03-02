@@ -53,9 +53,29 @@ jobs:
 
       - name: Package firmware
         run: |
-          cd bin/targets/*/*
-          # 只对固件文件生成校验和，排除 packages 目录
-          find . -maxdepth 1 -type f \( -name "*.img.gz" -o -name "*.img" -o -name "*.bin" -o -name "*.iso" \) -exec sha256sum {} \; > sha256sums.txt
+          cd bin/targets/x86/64
+          
+          # 重命名 EFI 固件（按本地脚本命名规则）
+          # 格式：Z-ImmWrt-YYYYMMDD-zuoxm-x86_64-efi.img.gz
+          BUILD_DATE=$(date +"%Y%m%d")
+          
+          # 查找最新的 EFI 固件
+          EFI_IMAGE=$(find . -maxdepth 1 -type f -name "*-efi.img.gz" ! -name "Z-ImmWrt-*" | head -n 1)
+          
+          if [ -n "$EFI_IMAGE" ]; then
+            NEW_NAME="Z-ImmWrt-${ build_date }-zuoxm-x86_64-efi.img.gz"
+            echo "重命名固件：$EFI_IMAGE -> $NEW_NAME"
+            mv -f "$EFI_IMAGE" "$NEW_NAME"
+            
+            # 同时生成对应的 sha256sum
+            sha256sum "$NEW_NAME" > sha256sums.txt
+          else
+            echo "未找到 EFI 固件"
+            exit 1
+          fi
+          
+          # 复制到其他格式（如果需要）
+          # cp Z-ImmWrt-${ build_date }-zuoxm-x86_64-efi.img.gz Z-ImmWrt-${ build_date }-zuoxm-x86_64-legacy.img.gz 2>/dev/null || true
 
       - name: Upload to Releases
         uses: softprops/action-gh-release@v1

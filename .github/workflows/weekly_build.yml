@@ -54,7 +54,8 @@ jobs:
       - name: Package firmware
         run: |
           cd bin/targets/*/*
-          sha256sum * > sha256sums.txt
+          # 只对固件文件生成校验和，排除 packages 目录
+          find . -maxdepth 1 -type f \( -name "*.img.gz" -o -name "*.img" -o -name "*.bin" -o -name "*.iso" \) -exec sha256sum {} \; > sha256sums.txt
 
       - name: Upload to Releases
         uses: softprops/action-gh-release@v1

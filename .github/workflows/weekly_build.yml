@@ -1,4 +1,4 @@
-name: Weekly Build
+name: Build ImmortalWrt x86_64
 
 on:
   schedule:
@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    name: Build ImmortalWrt
+    name: Build ImmortalWrt x86_64 EFI
     runs-on: ubuntu-latest
     timeout-minutes: 360
     
@@ -36,62 +36,73 @@ jobs:
       - name: Apply .config
         run: |
           ls -la .config || echo "No .config found"
-          cp -f .config .config.backup 2>/dev/null || true
           make defconfig
-
-      - name: Download toolchain
-        run: make download -j$(nproc)
 
       - name: Install qemu-img
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-utils
 
+      - name: Download toolchain
+        run: make download -j$(nproc)
+
       - name: Compile firmware
         run: |
           make -j$(nproc) || make -j1 V=s
 
-      - name: Package firmware
+      - name: Rename and package firmware
         run: |
           cd bin/targets/x86/64
           
-          # 重命名 EFI 固件（按本地脚本命名规则）
-          # 格式：Z-ImmWrt-YYYYMMDD-zuoxm-x86_64-efi.img.gz
-          BUILD_DATE=$(date +"%Y%m%d")
+          # 设置变量
+          DATE=$(date +%Y%m%d)
+          OWNER="zuoxm"
+          PLATFORM="x86_64"
+          TYPE="efi"
           
-          # 查找最新的 EFI 固件
-          EFI_IMAGE=$(find . -maxdepth 1 -type f -name "*-efi.img.gz" ! -name "Z-ImmWrt-*" | head -n 1)
+          # 原始文件名
+          SOURCE_FILE="immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz"
           
-          if [ -n "$EFI_IMAGE" ]; then
-            NEW_NAME="Z-ImmWrt-${ build_date }-zuoxm-x86_64-efi.img.gz"
-            echo "重命名固件：$EFI_IMAGE -> $NEW_NAME"
-            mv -f "$EFI_IMAGE" "$NEW_NAME"
+          # 目标文件名
+          TARGET_FILE="Z-ImmWrt-${DATE}-${OWNER}-${PLATFORM}-${TYPE}.img.gz"
+          
+          # 重命名
+          if [ -f "$SOURCE_FILE" ]; then
+            cp "$SOURCE_FILE" "$TARGET_FILE"
+            echo "✅ 重命名完成：$TARGET_FILE"
             
-            # 同时生成对应的 sha256sum
-            sha256sum "$NEW_NAME" > sha256sums.txt
+            # 生成 SHA256
+            sha256sum "$TARGET_FILE" > "${TARGET_FILE}.sha256"
+            
+            # 清理原始文件（只保留目标文件）
+            rm -f "$SOURCE_FILE"
+            
+            # 显示文件信息
+            echo ""
+            echo "📦 固件信息:"
+            ls -lh "$TARGET_FILE"*
           else
-            echo "未找到 EFI 固件"
+            echo "❌ 错误：未找到固件文件！"
+            ls -la
             exit 1
           fi
-          
-          # 复制到其他格式（如果需要）
-          # cp Z-ImmWrt-${ build_date }-zuoxm-x86_64-efi.img.gz Z-ImmWrt-${ build_date }-zuoxm-x86_64-legacy.img.gz 2>/dev/null || true
 
       - name: Upload to Releases
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: weekly-build-${{ github.run_number }}
-          name: Weekly Build ${{ github.run_number }}
+          tag_name: build-${{ github.run_number }}
+          name: ImmortalWrt x86_64 EFI - ${{ github.run_number }}
           body: |
             **Build Time:** ${{ github.event.head_commit.timestamp }}
             **Commit:** ${{ github.sha }}
-            Auto-built firmware with custom configurations.
+            **Platform:** x86_64 EFI
+            **Owner:** zuoxm
+            
+            Auto-built ImmortalWrt firmware with custom configurations.
           files: |
-            bin/targets/*/*/*.img.gz
-            bin/targets/*/*/*.bin
-            bin/targets/*/*/*.iso
-            bin/targets/*/*/*sha256sums.txt
-          fail_on_unmatched_files: false
+            bin/targets/x86/64/Z-ImmWrt-*.img.gz
+            bin/targets/x86/64/Z-ImmWrt-*.sha256
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -125,6 +125,18 @@ jobs:
           echo "📦 恢复后的文件:"
           ls -la
 
+      - name: Apply custom changes
+        run: |
+          echo "🔧 应用自定义修改..."
+          
+          # 检查脚本是否存在
+          if [ -f "scripts/apply-custom-changes.sh" ]; then
+            chmod +x scripts/apply-custom-changes.sh
+            bash scripts/apply-custom-changes.sh
+          else
+            echo "⚠️  未找到自动应用脚本，跳过"
+          fi
+
       - name: Check for conflicts
         run: |
           echo "🔍 检查文件冲突..."

@@ -1,0 +1,171 @@
+name: Daily Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 18 * * *'  # 每天 UTC 18:00 (北京时间 02:00)
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync with ImmortalWrt upstream
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Save custom files
+        run: |
+          echo "💾 保存自定义文件..."
+          mkdir -p /tmp/custom-backup
+          
+          # 备份 files 目录
+          if [ -d "files" ]; then
+            cp -rf files /tmp/custom-backup/
+            echo "✅ files 目录已备份"
+          fi
+          
+          # 备份 .config
+          if [ -f ".config" ]; then
+            cp .config /tmp/custom-backup/
+            echo "✅ .config 已备份"
+          fi
+          
+          # 备份自定义脚本
+          if [ -d "scripts" ]; then
+            cp -rf scripts /tmp/custom-backup/
+            echo "✅ scripts 目录已备份"
+          fi
+          
+          # 显示备份内容
+          echo ""
+          echo "📦 备份内容:"
+          ls -la /tmp/custom-backup/
+
+      - name: Add upstream remote
+        run: |
+          echo "🔗 添加上游远程仓库..."
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git || true
+          git remote -v
+
+      - name: Fetch upstream
+        run: |
+          echo "📥 拉取上游代码..."
+          git fetch upstream master
+          echo ""
+          echo "📊 上游最新提交:"
+          git log upstream/master -1 --oneline
+
+      - name: Backup current changes
+        run: |
+          echo "💾 备份当前更改..."
+          
+          # 记录当前分支的修改文件
+          git status --porcelain > /tmp/git-status.txt || true
+          
+          if [ -s /tmp/git-status.txt ]; then
+            echo "📝 当前修改的文件:"
+            cat /tmp/git-status.txt
+          else
+            echo "✅ 没有未提交的更改"
+          fi
+
+      - name: Reset to upstream
+        run: |
+          echo "🔄 重置到上游最新版本..."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 保存当前分支名
+          CURRENT_BRANCH=$(git branch --show-current)
+          echo "当前分支：$CURRENT_BRANCH"
+          
+          # 重置到上游 master
+          git reset --hard upstream/master
+          
+          echo "✅ 已重置到上游 master"
+
+      - name: Restore custom files
+        run: |
+          echo "🔧 恢复自定义文件..."
+          
+          # 恢复 files 目录
+          if [ -d "/tmp/custom-backup/files" ]; then
+            # 如果上游也有 files 目录，先合并
+            if [ -d "files" ]; then
+              echo "⚠️  上游也有 files 目录，正在合并..."
+              cp -rf /tmp/custom-backup/files/* files/
+            else
+              cp -rf /tmp/custom-backup/files .
+            fi
+            echo "✅ files 目录已恢复"
+          fi
+          
+          # 恢复 .config
+          if [ -f "/tmp/custom-backup/.config" ]; then
+            cp /tmp/custom-backup/.config .
+            echo "✅ .config 已恢复"
+          fi
+          
+          # 恢复 scripts 目录
+          if [ -d "/tmp/custom-backup/scripts" ]; then
+            if [ -d "scripts" ]; then
+              echo "⚠️  上游也有 scripts 目录，正在合并..."
+              cp -rf /tmp/custom-backup/scripts/* scripts/
+            else
+              cp -rf /tmp/custom-backup/scripts .
+            fi
+            echo "✅ scripts 目录已恢复"
+          fi
+          
+          echo ""
+          echo "📦 恢复后的文件:"
+          ls -la
+
+      - name: Check for conflicts
+        run: |
+          echo "🔍 检查文件冲突..."
+          
+          # 显示当前状态
+          git status --porcelain
+          
+          # 如果有冲突，列出
+          if git diff --quiet; then
+            echo "✅ 没有冲突，所有自定义文件已恢复"
+          else
+            echo "⚠️  检测到更改，需要手动检查"
+            git diff --stat
+          fi
+
+      - name: Commit and push changes
+        run: |
+          echo "📤 提交并推送更改..."
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 添加所有更改
+          git add -A
+          
+          # 如果有更改则提交
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: sync with upstream $(date +%Y%m%d)
+            
+            - Sync with immortalwrt/immortalwrt master
+            - Preserve custom files (files/, .config, scripts/)
+            - Auto-sync by GitHub Actions"
+            
+            git push origin HEAD:master
+            echo "✅ 已推送上游同步"
+          else
+            echo "✅ 没有新更改，已是最新"
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ 同步失败！请手动检查。"
+          exit 1

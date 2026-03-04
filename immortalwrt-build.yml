@@ -1,0 +1,114 @@
+name: Build ImmortalWrt x86_64
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # 每周日凌晨 2 点 UTC (北京时间 10:00)
+  workflow_dispatch:
+    inputs:
+      clean_build:
+        description: 'Clean build (rebuild everything)'
+        required: false
+        default: 'false'
+
+jobs:
+  build:
+    name: Build ImmortalWrt x86_64 EFI
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Initialize feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Copy custom files
+        run: |
+          if [ -d "files" ]; then
+            cp -rf files/* ./
+          fi
+
+      - name: Apply .config
+        run: |
+          if [ -f ".config" ]; then
+            cp .config .config
+          else
+            make defconfig
+          fi
+
+      - name: Download toolchain
+        run: make download -j$(nproc)
+
+      - name: Compile firmware
+        run: |
+          make -j$(nproc) || make -j1 V=s
+
+      - name: Set build date
+        id: date
+        run: echo "date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+
+      - name: Rename and package firmware
+        run: |
+          cd bin/targets/x86/64
+          
+          # 设置变量
+          DATE="${{ steps.date.outputs.date }}"
+          OWNER="zuoxm"
+          PLATFORM="x86_64"
+          TYPE="efi"
+          
+          # 原始文件名
+          SOURCE_FILE="immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz"
+          
+          # 目标文件名
+          TARGET_FILE="Z-ImmWrt-${DATE}-${OWNER}-${PLATFORM}-${TYPE}.img.gz"
+          
+          # 重命名
+          if [ -f "$SOURCE_FILE" ]; then
+            cp "$SOURCE_FILE" "$TARGET_FILE"
+            echo "✅ 重命名完成：$TARGET_FILE"
+            
+            # 生成 SHA256
+            sha256sum "$TARGET_FILE" > "${TARGET_FILE}.sha256"
+            
+            # 清理原始文件（只保留目标文件）
+            rm -f "$SOURCE_FILE"
+            
+            # 显示文件信息
+            echo ""
+            echo "📦 固件信息:"
+            ls -lh "$TARGET_FILE"*
+          else
+            echo "❌ 错误：未找到固件文件！"
+            ls -la
+            exit 1
+          fi
+
+      - name: Upload to Releases
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: build-${{ steps.date.outputs.date }}
+          name: Z-ImmWrt-v${{ steps.date.outputs.date }}
+          body: |
+            **Build Time:** ${{ github.event.head_commit.timestamp }}
+            **Commit:** ${{ github.sha }}
+            **Platform:** x86_64 EFI
+            **Owner:** zuoxm
+            
+            Auto-built ImmortalWrt firmware with custom configurations.
+          files: |
+            bin/targets/x86/64/Z-ImmWrt-*.img.gz
+            bin/targets/x86/64/Z-ImmWrt-*.sha256
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Build failed! Check logs."

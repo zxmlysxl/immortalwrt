@@ -35,8 +35,14 @@ jobs:
 
       - name: Apply .config
         run: |
-          ls -la .config || echo "No .config found"
-          make defconfig
+          if [ -f ".config" ]; then
+            echo "✅ 使用仓库中的 .config 文件"
+            cp .config .config.backup
+            make olddefconfig
+          else
+            echo "⚠️ 未找到 .config，使用默认配置"
+            make defconfig
+          fi
 
       - name: Install qemu-img
         run: |

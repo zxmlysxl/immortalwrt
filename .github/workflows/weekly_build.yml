@@ -22,30 +22,34 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Initialize feeds
-        run: |
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
-
       - name: Copy custom files
         run: |
           if [ -d "files" ]; then
             cp -rf files/* ./
           fi
 
-      - name: Apply .config
+      - name: Apply .config (BEFORE feeds update)
         run: |
           if [ -f ".config" ]; then
             echo "✅ 使用仓库中的 .config 文件"
             cp .config .config.backup
-            # 先更新 feeds 确保包定义最新
-            ./scripts/feeds update -a 2>/dev/null || true
-            ./scripts/feeds install -a 2>/dev/null || true
-            # 使用 oldconfig 更宽容，不会因缺失依赖而失败
-            make oldconfig || make defconfig
+            # 在 feeds 更新前应用配置，确保配置项匹配
+            make olddefconfig
+            echo "✅ 配置已应用，检查生成的 .config 大小:"
+            ls -lh .config
           else
             echo "⚠️ 未找到 .config，使用默认配置"
             make defconfig
+          fi
+
+      - name: Initialize feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          # feeds 更新后再次应用配置，处理新增的包
+          if [ -f ".config.backup" ]; then
+            echo "🔄 更新 feeds 后重新应用配置..."
+            make olddefconfig
           fi
 
       - name: Install qemu-img

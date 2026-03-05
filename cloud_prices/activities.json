@@ -1,0 +1,90 @@
+{
+  "activities": {
+    "tencent": {
+      "hash": "87a9503bc7fee18896532ce885d4f572",
+      "url": "https://cloud.tencent.com/act",
+      "activities": [
+        {
+          "title": "最新活动HOT",
+          "provider": "tencent",
+          "url": "https://cloud.tencent.com/act"
+        },
+        {
+          "title": "优惠商品与活动合集",
+          "provider": "tencent",
+          "url": "#all"
+        },
+        {
+          "title": "领券中心",
+          "provider": "tencent",
+          "url": "#lingquan"
+        },
+        {
+          "title": "推广大使推荐返现HOT推荐好友上云最高得8万月佣金前往了解",
+          "provider": "tencent",
+          "url": "https://cloud.tencent.com/act/partner/cps?from=19068"
+        },
+        {
+          "title": "云+校园HOT学生用户享服务器最低30元立即选购",
+          "provider": "tencent",
+          "url": "https://cloud.tencent.com/act/campus?from=19070"
+        },
+        {
+          "title": "域名专场特惠HOT.com域名.cn域名首年0元立即选购",
+          "provider": "tencent",
+          "url": "https://cloud.tencent.com/act/pro/domain?from=27346"
+        },
+        {
+          "title": "对象存储COS迁移活动迁移享免费存储空间和大额代金券立即选购",
+          "provider": "tencent",
+          "url": "https://cloud.tencent.com/act/pro/teaStarterExhibition?from=29429&from=29430#2"
+        }
+      ],
+      "last_check": "2026-03-05T20:00:02.736679"
+    },
+    "aliyun": {
+      "hash": "a930b3bc08d9c3e160122908e326daac",
+      "url": "https://www.aliyun.com/activity",
+      "activities": [],
+      "last_check": "2026-03-05T20:00:04.318389"
+    },
+    "huawei": {
+      "hash": "470fad28d001bb770b392d3e74044b1f",
+      "url": "https://activity.huaweicloud.com",
+      "activities": [
+        {
+          "title": "精选推荐活动推荐",
+          "provider": "huawei"
+        },
+        {
+          "title": "所有活动",
+          "provider": "huawei"
+        }
+      ],
+      "last_check": "2026-03-05T20:00:04.472924"
+    },
+    "aws": {
+      "hash": "24d74b5582c29e9fd5af07c5867c2780",
+      "url": "https://aws.amazon.com/cn/free/",
+      "activities": [
+        {
+          "title": "您是否在 2025 年 7 月 16 日之前创建了 AWS 账户？ 访问旧版免费套餐",
+          "provider": "aws",
+          "url": "/cn/free/legacy/?p=free&c=hp2&z=1"
+        },
+        {
+          "title": "创建免费账户",
+          "provider": "aws",
+          "url": "https://portal.aws.amazon.com/gp/aws/developer/registration/index.html?refid=em_127222&p=free&c=hp2&z=1&target=_blank"
+        },
+        {
+          "title": "开始使用注册 AWS 账户立即开启 AWS 免费套餐。创建 AWS 账户",
+          "provider": "aws",
+          "url": "https://portal.aws.amazon.com/gp/aws/developer/registration/index.html?&p=free&c=hp2&z=6"
+        }
+      ],
+      "last_check": "2026-03-05T20:00:04.773322"
+    }
+  },
+  "last_check": "2026-03-05T20:00:04.773354"
+}

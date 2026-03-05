@@ -1,0 +1,101 @@
+{
+  "records": [
+    {
+      "timestamp": "2026-03-05T10:06:39.521808",
+      "hash": "b9e7042f68e81676012570b581e7ade8",
+      "changes_count": 12,
+      "changes": [
+        {
+          "type": "new",
+          "provider": "腾讯云轻量",
+          "config": "2 核 2G",
+          "new_price": 48
+        },
+        {
+          "type": "new",
+          "provider": "腾讯云轻量",
+          "config": "2 核 4G",
+          "new_price": 72
+        },
+        {
+          "type": "new",
+          "provider": "腾讯云轻量",
+          "config": "4 核 8G",
+          "new_price": 144
+        },
+        {
+          "type": "new",
+          "provider": "阿里云轻量",
+          "config": "2 核 2G",
+          "new_price": 59
+        },
+        {
+          "type": "new",
+          "provider": "阿里云轻量",
+          "config": "2 核 4G",
+          "new_price": 89
+        },
+        {
+          "type": "new",
+          "provider": "阿里云轻量",
+          "config": "4 核 8G",
+          "new_price": 178
+        },
+        {
+          "type": "new",
+          "provider": "华为云 HECS",
+          "config": "2 核 2G",
+          "new_price": 52
+        },
+        {
+          "type": "new",
+          "provider": "华为云 HECS",
+          "config": "2 核 4G",
+          "new_price": 82
+        },
+        {
+          "type": "new",
+          "provider": "华为云 HECS",
+          "config": "4 核 8G",
+          "new_price": 165
+        },
+        {
+          "type": "new",
+          "provider": "AWS Lightsail",
+          "config": "1 核 2G",
+          "new_price": 86
+        },
+        {
+          "type": "new",
+          "provider": "AWS Lightsail",
+          "config": "2 核 4G",
+          "new_price": 172
+        },
+        {
+          "type": "new",
+          "provider": "AWS Lightsail",
+          "config": "4 核 8G",
+          "new_price": 345
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-03-05T10:22:23.739850",
+      "hash": "b9e7042f68e81676012570b581e7ade8",
+      "changes_count": 0,
+      "changes": []
+    },
+    {
+      "timestamp": "2026-03-05T10:24:07.238727",
+      "hash": "b9e7042f68e81676012570b581e7ade8",
+      "changes_count": 0,
+      "changes": []
+    },
+    {
+      "timestamp": "2026-03-05T20:00:02.142871",
+      "hash": "b9e7042f68e81676012570b581e7ade8",
+      "changes_count": 0,
+      "changes": []
+    }
+  ]
+}

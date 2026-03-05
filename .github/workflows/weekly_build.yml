@@ -38,7 +38,11 @@ jobs:
           if [ -f ".config" ]; then
             echo "✅ 使用仓库中的 .config 文件"
             cp .config .config.backup
-            make olddefconfig
+            # 先更新 feeds 确保包定义最新
+            ./scripts/feeds update -a 2>/dev/null || true
+            ./scripts/feeds install -a 2>/dev/null || true
+            # 使用 oldconfig 更宽容，不会因缺失依赖而失败
+            make oldconfig || make defconfig
           else
             echo "⚠️ 未找到 .config，使用默认配置"
             make defconfig

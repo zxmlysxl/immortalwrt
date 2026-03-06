@@ -36,13 +36,17 @@ jobs:
       - name: Apply .config
         run: |
           if [ -f ".config" ]; then
-            echo "✅ 使用仓库中的 .config 文件"
-            # 直接复制配置，避免 make olddefconfig 的依赖检查
-            cp .config .config.final
-            # 使用更宽容的 oldconfig
-            make oldconfig || echo "⚠️ oldconfig 失败，继续使用当前配置"
-            echo "✅ 配置应用完成"
+            echo "✅ 使用仓库中的 .config 文件 (329KB)"
+            # 强制使用 .config，覆盖任何默认配置
+            cp .config .config.orig
+            # 先运行 defconfig 生成基础配置
+            make defconfig
+            # 然后用我们的配置覆盖
+            cp .config.orig .config
+            echo "✅ 配置已强制应用"
             ls -lh .config
+            # 验证配置是否正确
+            grep -c "CONFIG_PACKAGE_" .config || echo "⚠️ 配置可能有问题"
           else
             echo "⚠️ 未找到 .config，使用默认配置"
             make defconfig

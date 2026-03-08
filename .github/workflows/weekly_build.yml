@@ -58,8 +58,7 @@ jobs:
             
             # 使用 oldconfig 应用配置（不会重置 feeds 配置）
             # oldconfig 会保留现有配置，只询问新选项
-            make oldconfig << EOF || echo "⚠️ oldconfig 有警告，继续使用当前配置"
-EOF
+            make oldconfig < .config.user || echo "⚠️ oldconfig 有警告，继续使用当前配置"
             
             # 验证关键配置
             echo "🔍 验证关键配置..."

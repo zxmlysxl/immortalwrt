@@ -55,25 +55,34 @@ jobs:
       - name: Apply .config
         run: |
           if [ -f ".config" ]; then
-            echo "✅ 使用仓库中的 .config 文件"
+            echo "✅ 使用仓库中的 .config 文件 ($(du -h .config | cut -f1))"
+            echo "配置项统计:"
+            echo "  - 总配置行：$(wc -l < .config)"
+            echo "  - 软件包配置：$(grep -c '^CONFIG_PACKAGE_' .config || echo 0)"
+            echo "  - 默认软件包：$(grep -c '^CONFIG_DEFAULT_' .config || echo 0)"
+            
             # 保存原始配置
             cp .config .config.user
             
-            # 使用 oldconfig 应用配置（不会重置 feeds 配置）
-            # oldconfig 会保留现有配置，只询问新选项
-            make oldconfig < .config.user || echo "⚠️ oldconfig 有警告，继续使用当前配置"
+            # 强制使用 .config，覆盖 make 生成的默认配置
+            # 这是关键：直接复制，确保所有 CONFIG_PACKAGE_* 都被保留
+            make defconfig
+            cp .config.user .config
             
-            # 验证关键配置
-            echo "🔍 验证关键配置..."
+            # 使用 olddefconfig 处理新选项（用默认值，不会丢失现有配置）
+            make olddefconfig
+            
+            # 验证配置
+            echo "✅ 配置应用完成，验证结果:"
+            echo "  - 总配置行：$(wc -l < .config)"
+            echo "  - 软件包配置：$(grep -c '^CONFIG_PACKAGE_' .config || echo 0)"
+            
             LUCI_COUNT=$(grep -c "^CONFIG_PACKAGE_luci" .config || echo "0")
-            echo "找到 $LUCI_COUNT 个 LuCI 相关配置项"
+            echo "  - LuCI 相关配置：$LUCI_COUNT"
             
             if [ "$LUCI_COUNT" -lt 5 ]; then
-              echo "⚠️ LuCI 配置项过少，可能有问题"
+              echo "⚠️ 警告：LuCI 配置项过少"
             fi
-            
-            echo "✅ 配置应用完成"
-            ls -lh .config
           else
             echo "⚠️ 未找到 .config，使用默认配置"
             make defconfig
@@ -89,11 +98,18 @@ jobs:
 
       - name: Compile firmware
         run: |
+          echo "🔨 开始编译..."
+          echo "配置的软件包数量：$(grep -c '^CONFIG_PACKAGE_' .config || echo 0)"
           make -j$(nproc) || make -j1 V=s
+          echo "✅ 编译完成"
 
       - name: Rename and package firmware
         run: |
           cd bin/targets/x86/64
+          
+          # 显示生成的文件
+          echo "📦 生成的固件文件:"
+          ls -lh *.img.gz 2>/dev/null || echo "❌ 未找到固件文件"
           
           # 设置变量
           DATE=$(date +%Y%m%d)
@@ -120,7 +136,7 @@ jobs:
             
             # 显示文件信息
             echo ""
-            echo "📦 固件信息:"
+            echo "📊 固件信息:"
             ls -lh "$TARGET_FILE"*
           else
             echo "❌ 错误：未找到固件文件！"

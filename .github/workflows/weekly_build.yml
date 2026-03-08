@@ -1,6 +1,9 @@
 name: Build ImmortalWrt x86_64
 
 on:
+  push:
+    branches:
+      - master
   schedule:
     - cron: '0 2 * * 0'  # 每周日凌晨 2 点 UTC (北京时间 10:00)
   workflow_dispatch:

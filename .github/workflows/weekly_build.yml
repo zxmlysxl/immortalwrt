@@ -33,19 +33,29 @@ jobs:
 
       - name: Initialize feeds
         run: |
+          echo "=== Updating feeds ==="
           ./scripts/feeds update -a
+          echo "=== Installing feeds (1st pass) ==="
           ./scripts/feeds install -a
+          echo "=== Installing feeds (2nd pass) ==="
           ./scripts/feeds install -a
+          echo "=== Checking luci package ==="
+          if [ -d "feeds/luci/collections/luci" ]; then
+            echo "✅ luci package found"
+            ls -la feeds/luci/collections/luci/
+          else
+            echo "❌ luci package NOT found!"
+            find . -name "luci" -type d 2>/dev/null | head -10
+          fi
 
       - name: Apply .config
         run: |
           if [ -f ".config" ]; then
             echo "Using .config file directly..."
-            # 直接使用 .config，不运行任何 make config 命令
-            # 这样确保所有 CONFIG_PACKAGE_* 都被保留
             chmod +r .config
             echo "Config file size: $(du -h .config | cut -f1)"
             echo "Package count: $(grep -c '^CONFIG_PACKAGE_' .config)"
+            echo "LuCI packages: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
           else
             make defconfig
           fi

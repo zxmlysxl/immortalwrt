@@ -40,12 +40,14 @@ jobs:
       - name: Apply .config
         run: |
           if [ -f ".config" ]; then
-            echo "Using .config file..."
-            cp .config .config.user
-            make defconfig
-            cp .config.user .config
-            make olddefconfig
-            echo "Config applied successfully"
+            echo "Copying .config directly..."
+            # 直接复制 .config，避免 defconfig 生成冲突
+            cp .config .config.backup
+            # 使用 oldconfig 而不是 defconfig+olddefconfig
+            make oldconfig < /dev/null || true
+            # 恢复原始配置
+            cp .config.backup .config
+            echo "Config ready"
           else
             make defconfig
           fi

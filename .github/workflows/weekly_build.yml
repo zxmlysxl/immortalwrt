@@ -5,7 +5,7 @@ on:
     branches:
       - master
   schedule:
-    - cron: '0 2 * * 0'  # 每周日凌晨 2 点 UTC (北京时间 10:00)
+    - cron: '0 2 * * 0'
   workflow_dispatch:
     inputs:
       clean_build:
@@ -33,58 +33,20 @@ jobs:
 
       - name: Initialize feeds
         run: |
-          echo "🔄 第一次更新 feeds..."
           ./scripts/feeds update -a
-          echo "📦 安装 feeds 包..."
           ./scripts/feeds install -a
-          
-          # 验证 luci feed 是否正确安装
-          echo "🔍 验证 luci 包..."
-          if [ -d "feeds/luci/luci" ]; then
-            echo "✅ luci feed 目录存在"
-          else
-            echo "❌ luci feed 目录不存在，重新更新..."
-            ./scripts/feeds update luci
-            ./scripts/feeds install luci
-          fi
-          
-          # 再次安装所有包确保依赖正确
           ./scripts/feeds install -a
-          echo "✅ feeds 初始化完成"
 
       - name: Apply .config
         run: |
           if [ -f ".config" ]; then
-            echo "✅ 使用仓库中的 .config 文件 ($(du -h .config | cut -f1))"
-            echo "配置项统计:"
-            echo "  - 总配置行：$(wc -l < .config)"
-            echo "  - 软件包配置：$(grep -c '^CONFIG_PACKAGE_' .config || echo 0)"
-            echo "  - 默认软件包：$(grep -c '^CONFIG_DEFAULT_' .config || echo 0)"
-            
-            # 保存原始配置
+            echo "Using .config file..."
             cp .config .config.user
-            
-            # 强制使用 .config，覆盖 make 生成的默认配置
-            # 这是关键：直接复制，确保所有 CONFIG_PACKAGE_* 都被保留
             make defconfig
             cp .config.user .config
-            
-            # 使用 olddefconfig 处理新选项（用默认值，不会丢失现有配置）
             make olddefconfig
-            
-            # 验证配置
-            echo "✅ 配置应用完成，验证结果:"
-            echo "  - 总配置行：$(wc -l < .config)"
-            echo "  - 软件包配置：$(grep -c '^CONFIG_PACKAGE_' .config || echo 0)"
-            
-            LUCI_COUNT=$(grep -c "^CONFIG_PACKAGE_luci" .config || echo "0")
-            echo "  - LuCI 相关配置：$LUCI_COUNT"
-            
-            if [ "$LUCI_COUNT" -lt 5 ]; then
-              echo "⚠️ 警告：LuCI 配置项过少"
-            fi
+            echo "Config applied successfully"
           else
-            echo "⚠️ 未找到 .config，使用默认配置"
             make defconfig
           fi
 
@@ -98,49 +60,21 @@ jobs:
 
       - name: Compile firmware
         run: |
-          echo "🔨 开始编译..."
-          echo "配置的软件包数量：$(grep -c '^CONFIG_PACKAGE_' .config || echo 0)"
           make -j$(nproc) || make -j1 V=s
-          echo "✅ 编译完成"
 
       - name: Rename and package firmware
         run: |
           cd bin/targets/x86/64
-          
-          # 显示生成的文件
-          echo "📦 生成的固件文件:"
-          ls -lh *.img.gz 2>/dev/null || echo "❌ 未找到固件文件"
-          
-          # 设置变量
           DATE=$(date +%Y%m%d)
-          OWNER="zuoxm"
-          PLATFORM="x86_64"
-          TYPE="efi"
-          
-          # 原始文件名
           SOURCE_FILE="immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz"
-          
-          # 目标文件名
-          TARGET_FILE="Z-ImmWrt-${DATE}-${OWNER}-${PLATFORM}-${TYPE}.img.gz"
-          
-          # 重命名
+          TARGET_FILE="Z-ImmWrt-${DATE}-zuoxm-x86_64-efi.img.gz"
           if [ -f "$SOURCE_FILE" ]; then
             cp "$SOURCE_FILE" "$TARGET_FILE"
-            echo "✅ 重命名完成：$TARGET_FILE"
-            
-            # 生成 SHA256
             sha256sum "$TARGET_FILE" > "${TARGET_FILE}.sha256"
-            
-            # 清理原始文件（只保留目标文件）
             rm -f "$SOURCE_FILE"
-            
-            # 显示文件信息
-            echo ""
-            echo "📊 固件信息:"
             ls -lh "$TARGET_FILE"*
           else
-            echo "❌ 错误：未找到固件文件！"
-            ls -la
+            echo "Error: Firmware file not found!"
             exit 1
           fi
 
@@ -153,17 +87,9 @@ jobs:
             **Build Time:** ${{ github.event.head_commit.timestamp }}
             **Commit:** ${{ github.sha }}
             **Platform:** x86_64 EFI
-            **Owner:** zuoxm
-            
-            Auto-built ImmortalWrt firmware with custom configurations.
           files: |
             bin/targets/x86/64/Z-ImmWrt-*.img.gz
             bin/targets/x86/64/Z-ImmWrt-*.sha256
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "❌ Build failed! Check logs."

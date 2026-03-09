@@ -40,14 +40,12 @@ jobs:
       - name: Apply .config
         run: |
           if [ -f ".config" ]; then
-            echo "Copying .config directly..."
-            # 直接复制 .config，避免 defconfig 生成冲突
-            cp .config .config.backup
-            # 使用 oldconfig 而不是 defconfig+olddefconfig
-            make oldconfig < /dev/null || true
-            # 恢复原始配置
-            cp .config.backup .config
-            echo "Config ready"
+            echo "Using .config file directly..."
+            # 直接使用 .config，不运行任何 make config 命令
+            # 这样确保所有 CONFIG_PACKAGE_* 都被保留
+            chmod +r .config
+            echo "Config file size: $(du -h .config | cut -f1)"
+            echo "Package count: $(grep -c '^CONFIG_PACKAGE_' .config)"
           else
             make defconfig
           fi

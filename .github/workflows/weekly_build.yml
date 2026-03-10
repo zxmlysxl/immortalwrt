@@ -33,19 +33,31 @@ jobs:
 
       - name: Initialize feeds
         run: |
-          echo "=== Updating feeds ==="
+          echo "=== Step 1: Update feeds ==="
           ./scripts/feeds update -a
-          echo "=== Installing feeds (1st pass) ==="
+          
+          echo "=== Step 2: Install feeds (1st pass) ==="
           ./scripts/feeds install -a
-          echo "=== Installing feeds (2nd pass) ==="
+          
+          echo "=== Step 3: Install feeds (2nd pass) ==="
           ./scripts/feeds install -a
-          echo "=== Checking luci package ==="
+          
+          echo "=== Step 4: Verify luci package ==="
           if [ -d "feeds/luci/collections/luci" ]; then
-            echo "✅ luci package found"
+            echo "✅ luci package directory exists"
             ls -la feeds/luci/collections/luci/
           else
-            echo "❌ luci package NOT found!"
-            find . -name "luci" -type d 2>/dev/null | head -10
+            echo "❌ luci package directory NOT found!"
+            exit 1
+          fi
+          
+          echo "=== Step 5: Verify luci Makefile ==="
+          if [ -f "feeds/luci/collections/luci/Makefile" ]; then
+            echo "✅ luci Makefile exists"
+            head -20 feeds/luci/collections/luci/Makefile
+          else
+            echo "❌ luci Makefile NOT found!"
+            exit 1
           fi
 
       - name: Apply .config

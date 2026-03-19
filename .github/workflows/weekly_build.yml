@@ -60,11 +60,22 @@ jobs:
             echo "   软件包数：$(grep -c '^CONFIG_PACKAGE_' .config)"
             echo "   LuCI 包数：$(grep -c '^CONFIG_PACKAGE_luci' .config)"
             
-            # 直接复制 .config 到构建目录
-            cp .config build.config
+            # 关键修复：直接使用 .config，不使用 oldconfig 重置配置
+            cp .config .config.backup
             
-            # 运行 oldconfig 应用配置（不修改已有配置）
-            yes "" | make oldconfig
+            # 使用 defconfig 应用配置（保持已有配置）
+            yes '' | make defconfig
+            
+            # 验证配置是否保留
+            PKG_COUNT_BEFORE=$(grep -c '^CONFIG_PACKAGE_' .config.backup)
+            PKG_COUNT_AFTER=$(grep -c '^CONFIG_PACKAGE_' .config)
+            echo "   配置前包数：$PKG_COUNT_BEFORE"
+            echo "   配置后包数：$PKG_COUNT_AFTER"
+            
+            if [ "$PKG_COUNT_AFTER" -lt "$PKG_COUNT_BEFORE" ]; then
+              echo "⚠️ 配置丢失，恢复备份"
+              cp .config.backup .config
+            fi
             
             echo "✅ 配置应用完成"
           else
@@ -84,6 +95,7 @@ jobs:
         run: |
           echo "=== 开始编译 ==="
           echo "CPU 核心数：$(nproc)"
+          echo "配置的包数量：$(grep -c '^CONFIG_PACKAGE_' .config)"
           make -j$(nproc) || make -j1 V=s
 
       - name: Rename and package firmware
@@ -97,6 +109,7 @@ jobs:
             sha256sum "$TARGET_FILE" > "${TARGET_FILE}.sha256"
             rm -f "$SOURCE_FILE"
             ls -lh "$TARGET_FILE"*
+            echo "固件大小：$(du -h "$TARGET_FILE" | cut -f1)"
           else
             echo "❌ 固件文件未找到!"
             exit 1

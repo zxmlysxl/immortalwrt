@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '.config'
+      - '.github/workflows/weekly_build.yml'
+      - 'files/**'
   schedule:
     - cron: '0 2 * * 0'
   workflow_dispatch:
@@ -23,12 +27,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
+
+      - name: Display .config info
+        run: |
+          if [ -f ".config" ]; then
+            echo "✅ .config exists"
+            echo "   Size: $(du -h .config | cut -f1)"
+            echo "   Package count: $(grep -c '^CONFIG_PACKAGE_' .config)"
+            echo "   LuCI packages: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
+          else
+            echo "❌ .config NOT found!"
+            exit 1
+          fi
 
       - name: Copy custom files
         run: |
           if [ -d "files" ]; then
+            echo "📁 Copying custom files..."
             cp -rf files/* ./
+            echo "✅ Custom files copied"
+          else
+            echo "⚠️ No files directory to copy"
           fi
 
       - name: Initialize feeds
@@ -36,52 +56,34 @@ jobs:
           echo "=== Step 1: Update feeds ==="
           ./scripts/feeds update -a
           
-          echo "=== Step 2: Install feeds (1st pass) ==="
+          echo "=== Step 2: Install feeds ==="
           ./scripts/feeds install -a
           
-          echo "=== Step 3: Install feeds (2nd pass) ==="
-          ./scripts/feeds install -a
-          
-          echo "=== Step 4: Verify luci package ==="
+          echo "=== Step 3: Verify luci ==="
           if [ -d "feeds/luci/collections/luci" ]; then
-            echo "✅ luci package directory exists"
+            echo "✅ luci collection exists"
+            ls feeds/luci/collections/
           else
-            echo "❌ luci package directory NOT found!"
+            echo "❌ luci collection NOT found!"
+            echo "Available feeds:"
+            ls -la feeds/
             exit 1
           fi
 
-      - name: Apply .config
+      - name: Prepare config
         run: |
-          echo "=== 应用本地 .config 配置 ==="
-          if [ -f ".config" ]; then
-            echo "✅ .config 文件存在"
-            echo "   大小：$(du -h .config | cut -f1)"
-            echo "   行数：$(wc -l < .config)"
-            echo "   软件包数：$(grep -c '^CONFIG_PACKAGE_' .config)"
-            echo "   LuCI 包数：$(grep -c '^CONFIG_PACKAGE_luci' .config)"
-            
-            # 关键修复：直接使用 .config，不使用 oldconfig 重置配置
-            cp .config .config.backup
-            
-            # 使用 defconfig 应用配置（保持已有配置）
-            yes '' | make defconfig
-            
-            # 验证配置是否保留
-            PKG_COUNT_BEFORE=$(grep -c '^CONFIG_PACKAGE_' .config.backup)
-            PKG_COUNT_AFTER=$(grep -c '^CONFIG_PACKAGE_' .config)
-            echo "   配置前包数：$PKG_COUNT_BEFORE"
-            echo "   配置后包数：$PKG_COUNT_AFTER"
-            
-            if [ "$PKG_COUNT_AFTER" -lt "$PKG_COUNT_BEFORE" ]; then
-              echo "⚠️ 配置丢失，恢复备份"
-              cp .config.backup .config
-            fi
-            
-            echo "✅ 配置应用完成"
-          else
-            echo "❌ .config 文件不存在!"
-            exit 1
-          fi
+          echo "=== 保留原始 .config ==="
+          cp .config .config.keep
+          
+          echo "=== 运行 make defconfig (生成 .config) ==="
+          yes '' | make defconfig 2>&1 | tail -20
+          
+          echo "=== 恢复原始配置覆盖 ==="
+          cp .config.keep .config
+          
+          echo "=== 最终配置包数量 ==="
+          echo "Packages: $(grep -c '^CONFIG_PACKAGE_' .config)"
+          echo "LuCI: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
 
       - name: Install qemu-img
         run: |
@@ -94,29 +96,38 @@ jobs:
       - name: Compile firmware
         run: |
           echo "=== 开始编译 ==="
-          echo "CPU 核心数：$(nproc)"
-          echo "配置的包数量：$(grep -c '^CONFIG_PACKAGE_' .config)"
-          make -j$(nproc) || make -j1 V=s
+          echo "CPU cores: $(nproc)"
+          make -j$(nproc) 2>&1 | tail -50
+
+      - name: Check output
+        run: |
+          echo "=== 检查编译产物 ==="
+          find bin/targets -name "*.img.gz" -ls 2>/dev/null || echo "No img.gz found"
+          ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
 
       - name: Rename and package firmware
         run: |
           cd bin/targets/x86/64
           DATE=$(date +%Y%m%d)
-          SOURCE_FILE="immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz"
-          TARGET_FILE="Z-ImmWrt-${DATE}-zuoxm-x86_64-efi.img.gz"
-          if [ -f "$SOURCE_FILE" ]; then
+          
+          # 找到编译产物
+          SOURCE_FILE=$(ls immortalwrt-x86-64-*.img.gz 2>/dev/null | head -1)
+          
+          if [ -n "$SOURCE_FILE" ]; then
+            TARGET_FILE="Z-ImmWrt-${DATE}-zuoxm-x86_64-efi.img.gz"
             cp "$SOURCE_FILE" "$TARGET_FILE"
             sha256sum "$TARGET_FILE" > "${TARGET_FILE}.sha256"
-            rm -f "$SOURCE_FILE"
-            ls -lh "$TARGET_FILE"*
-            echo "固件大小：$(du -h "$TARGET_FILE" | cut -f1)"
+            echo "✅ 固件已生成"
+            ls -lh *.img.gz
           else
             echo "❌ 固件文件未找到!"
+            echo "目录内容:"
+            ls -la
             exit 1
           fi
 
       - name: Upload to Releases
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: ImmortalWrt x86_64 EFI - ${{ github.run_number }}
@@ -124,6 +135,7 @@ jobs:
             **Build Time:** ${{ github.event.head_commit.timestamp }}
             **Commit:** ${{ github.sha }}
             **Platform:** x86_64 EFI
+            **Firmware Size:** $(ls -lh bin/targets/x86/64/Z-ImmWrt-*.img.gz | awk '{print $5}')
           files: |
             bin/targets/x86/64/Z-ImmWrt-*.img.gz
             bin/targets/x86/64/Z-ImmWrt-*.sha256

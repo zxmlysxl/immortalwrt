@@ -107,24 +107,32 @@ jobs:
 
       - name: Rename and package firmware
         run: |
-          cd bin/targets/x86/64
-          DATE=$(date +%Y%m%d)
+          echo "=== 检查编译产物 ==="
+          find bin -type f -name "*.img*" 2>/dev/null || echo "No img files"
           
-          # 找到编译产物
-          SOURCE_FILE=$(ls immortalwrt-x86-64-*.img.gz 2>/dev/null | head -1)
+          # 灵活查找任意 .img.gz 文件
+          SOURCE_FILE=$(find bin -name "*.img.gz" -type f 2>/dev/null | head -1)
           
-          if [ -n "$SOURCE_FILE" ]; then
-            TARGET_FILE="Z-ImmWrt-${DATE}-zuoxm-x86_64-efi.img.gz"
-            cp "$SOURCE_FILE" "$TARGET_FILE"
-            sha256sum "$TARGET_FILE" > "${TARGET_FILE}.sha256"
-            echo "✅ 固件已生成"
-            ls -lh *.img.gz
-          else
-            echo "❌ 固件文件未找到!"
-            echo "目录内容:"
-            ls -la
+          if [ -z "$SOURCE_FILE" ]; then
+            echo "❌ 未找到固件文件"
+            echo "=== bin 目录内容 ==="
+            ls -laR bin/ | head -50
             exit 1
           fi
+          
+          echo "✅ 找到固件：$SOURCE_FILE"
+          
+          BASENAME=$(basename "$SOURCE_FILE")
+          DATE=$(date +%Y%m%d)
+          TARGET_FILE="Z-ImmWrt-${DATE}-zuoxm-x86_64-efi.img.gz"
+          
+          cp "$SOURCE_FILE" "$TARGET_FILE"
+          sha256sum "$TARGET_FILE" > "${TARGET_FILE}.sha256"
+          
+          echo "✅ 固件打包完成"
+          echo "   源文件：$BASENAME"
+          echo "   目标文件：$TARGET_FILE"
+          ls -lh "$TARGET_FILE" "${TARGET_FILE}.sha256"
 
       - name: Upload to Releases
         uses: softprops/action-gh-release@v2

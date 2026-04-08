@@ -97,7 +97,15 @@ jobs:
         run: |
           echo "=== 开始编译 ==="
           echo "CPU cores: $(nproc)"
-          make -j$(nproc) 2>&1 | tail -50
+          echo "=== 当前目录 ==="
+          pwd
+          echo "=== .config 中的目标平台 ==="
+          grep "CONFIG_TARGET" .config | head -10
+          make -j$(nproc) 2>&1 | tee /tmp/build.log | tail -100
+          echo "=== 编译结束 ==="
+          echo "=== 检查 bin 目录 ==="
+          ls -la bin/ 2>/dev/null || echo "bin dir not found"
+          find bin -name "*.img*" 2>/dev/null | head -20 || echo "No img files"
 
       - name: Check output
         run: |
@@ -143,10 +151,10 @@ jobs:
             **Build Time:** ${{ github.event.head_commit.timestamp }}
             **Commit:** ${{ github.sha }}
             **Platform:** x86_64 EFI
-            **Firmware Size:** $(ls -lh bin/targets/x86/64/Z-ImmWrt-*.img.gz | awk '{print $5}')
+            **Firmware Size:** $(ls -lh Z-ImmWrt-*.img.gz | awk '{print $5}')
           files: |
-            bin/targets/x86/64/Z-ImmWrt-*.img.gz
-            bin/targets/x86/64/Z-ImmWrt-*.sha256
+            Z-ImmWrt-*.img.gz
+            Z-ImmWrt-*.sha256
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

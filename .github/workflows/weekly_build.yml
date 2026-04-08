@@ -79,13 +79,26 @@ jobs:
           # 移除 openvswitch 相关配置避免递归依赖
           sed -i '/openvswitch/d' .config
           
-          echo "=== 运行 make oldconfig (应用配置) ==="
-          yes '' | make oldconfig 2>&1 | tail -30
+          echo "=== 运行 make olddefconfig (应用配置，新选项使用默认值) ==="
+          # 使用 olddefconfig 而非 oldconfig + yes ''
+          # olddefconfig 会自动将新选项设为默认值，而不是全部禁用
+          make olddefconfig 2>&1 | tail -30
           
-          echo "=== 最终配置包数量 ==="
-          echo "Packages: $(grep -c '^CONFIG_PACKAGE_' .config)"
-          echo "LuCI: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
+          echo "=== 验证配置完整性 ==="
+          echo "原始包数量：$(grep -c '^CONFIG_PACKAGE_' .config.keep)"
+          echo "最终包数量：$(grep -c '^CONFIG_PACKAGE_' .config)"
+          echo "LuCI 包数量：$(grep -c '^CONFIG_PACKAGE_luci' .config)"
           echo "EFI Images: $(grep 'CONFIG_EFI' .config)"
+          
+          # 如果包数量差异超过 10%，警告
+          ORIG=$(grep -c '^CONFIG_PACKAGE_' .config.keep)
+          FINAL=$(grep -c '^CONFIG_PACKAGE_' .config)
+          DIFF=$(( (ORIG - FINAL) * 100 / ORIG ))
+          if [ $DIFF -gt 10 ]; then
+            echo "⚠️ 警告：包数量减少了 ${DIFF}%"
+          else
+            echo "✅ 配置完整性检查通过 (差异 ${DIFF}%)"
+          fi
 
       - name: Install qemu-img
         run: |

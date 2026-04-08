@@ -75,15 +75,17 @@ jobs:
           echo "=== 保留原始 .config ==="
           cp .config .config.keep
           
-          echo "=== 运行 make defconfig (生成 .config) ==="
-          yes '' | make defconfig 2>&1 | tail -20
+          echo "=== 禁用有问题的包 ==="
+          # 移除 openvswitch 相关配置避免递归依赖
+          sed -i '/openvswitch/d' .config
           
-          echo "=== 恢复原始配置覆盖 ==="
-          cp .config.keep .config
+          echo "=== 运行 make oldconfig (应用配置) ==="
+          yes '' | make oldconfig 2>&1 | tail -30
           
           echo "=== 最终配置包数量 ==="
           echo "Packages: $(grep -c '^CONFIG_PACKAGE_' .config)"
           echo "LuCI: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
+          echo "EFI Images: $(grep 'CONFIG_EFI' .config)"
 
       - name: Install qemu-img
         run: |

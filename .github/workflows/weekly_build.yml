@@ -109,8 +109,8 @@ jobs:
           echo "=== .config 中的目标平台 ==="
           grep "CONFIG_TARGET" .config | head -10
           
-          echo "=== 第一步：编译工具链和包 ==="
-          make -j$(nproc) 2>&1 | tee /tmp/build.log | tail -100
+          echo "=== 第一步：编译工具链和包 (V=s 详细日志) ==="
+          make -j$(nproc) V=s 2>&1 | tee /tmp/build.log | tail -200
           
           echo "=== 第二步：生成镜像 (target/install) ==="
           make target/install 2>&1 | tee -a /tmp/build.log | tail -50

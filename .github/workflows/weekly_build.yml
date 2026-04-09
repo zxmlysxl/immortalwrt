@@ -134,7 +134,7 @@ jobs:
           find bin -type f -name "*.img*" 2>/dev/null || echo "No img files"
           
           # 灵活查找任意 .img.gz 文件
-          SOURCE_FILE=$(find bin -name "*.img.gz" -type f 2>/dev/null | head -1)
+          SOURCE_FILE=$(find bin/targets -type f \( -name "*.img.gz" -o -name "*.img" -o -name "*.vmdk" \) 2>/dev/null | head -1)
           
           if [ -z "$SOURCE_FILE" ]; then
             echo "❌ 未找到固件文件"

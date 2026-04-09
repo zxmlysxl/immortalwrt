@@ -132,8 +132,13 @@ jobs:
           echo "=== 检查编译产物 ==="
           find bin -type f -name "*.img*" 2>/dev/null || echo "No img files"
           
-          # 灵活查找任意 .img.gz 文件
-          SOURCE_FILE=$(find bin/targets -type f \( -name "*.img.gz" -o -name "*.img" -o -name "*.vmdk" \) 2>/dev/null | head -1)
+          # 优先选择 ext4-combined-efi 文件（完整固件 ~148MB）
+          SOURCE_FILE=$(find bin/targets -type f -name "*ext4-combined-efi.img.gz" 2>/dev/null | head -1)
+          
+          # 如果没有 ext4 文件，再尝试其他格式
+          if [ -z "$SOURCE_FILE" ]; then
+            SOURCE_FILE=$(find bin/targets -type f \( -name "*.img.gz" -o -name "*.img" -o -name "*.vmdk" \) 2>/dev/null | grep -v rootfs | head -1)
+          fi
           
           if [ -z "$SOURCE_FILE" ]; then
             echo "❌ 未找到固件文件"

@@ -108,11 +108,18 @@ jobs:
           pwd
           echo "=== .config 中的目标平台 ==="
           grep "CONFIG_TARGET" .config | head -10
+          
+          echo "=== 第一步：编译工具链和包 ==="
           make -j$(nproc) 2>&1 | tee /tmp/build.log | tail -100
+          
+          echo "=== 第二步：生成镜像 (target/install) ==="
+          make target/install 2>&1 | tee -a /tmp/build.log | tail -50
+          
           echo "=== 编译结束 ==="
           echo "=== 检查 bin 目录 ==="
           ls -la bin/ 2>/dev/null || echo "bin dir not found"
-          find bin -name "*.img*" 2>/dev/null | head -20 || echo "No img files"
+          ls -la bin/targets/x86/64/ 2>/dev/null || echo "targets dir not found"
+          find bin -name "*.img*" -o -name "*.vmdk*" -o -name "*.ext4*" 2>/dev/null | head -20 || echo "No image files"
 
       - name: Check output
         run: |

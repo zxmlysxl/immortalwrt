@@ -53,13 +53,20 @@ jobs:
 
       - name: Initialize feeds
         run: |
-          echo "=== Step 1: Update feeds ==="
+          echo "=== Step 1: Backup .config ==="
+          cp .config .config.backup
+          
+          echo "=== Step 2: Update feeds ==="
           ./scripts/feeds update -a
           
-          echo "=== Step 2: Install feeds ==="
-          ./scripts/feeds install -a
+          echo "=== Step 3: Install feeds (只安装非 LuCI 包) ==="
+          # 不安装所有包，避免覆盖 .config 配置
+          ./scripts/feeds install -a -p packages -p routing -p telephony -p video -p zuoxm
           
-          echo "=== Step 3: Verify luci ==="
+          echo "=== Step 4: Restore .config ==="
+          cp .config.backup .config
+          
+          echo "=== Step 5: Verify luci ==="
           if [ -d "feeds/luci/collections/luci" ]; then
             echo "✅ luci collection exists"
             ls feeds/luci/collections/
@@ -69,6 +76,9 @@ jobs:
             ls -la feeds/
             exit 1
           fi
+          
+          echo "=== Step 6: Verify .config ==="
+          echo "LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
 
       - name: Prepare config
         run: |

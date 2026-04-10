@@ -174,6 +174,7 @@ jobs:
           files: |
             Z-ImmWrt-*.img.gz
             Z-ImmWrt-*.sha256
+            bin/targets/x86/64/*.manifest
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

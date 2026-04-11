@@ -1,31 +1,33 @@
-<img src="https://avatars.githubusercontent.com/u/53193414?s=200&v=4" alt="logo" width="200" height="200" align="right">
+<img src="https://avatars.githubusercontent.com/u/53173414?s=200&v=4" alt="logo" width="200" height="200" align="right">
 
-# Project ImmortalWrt
+# ImmortalWrt 项目
 
-ImmortalWrt is a fork of [OpenWrt](https://openwrt.org), with more packages ported, more devices supported, default optimized profiles and localization modifications for mainland China users.<br/>
-Compared to upstream, we allow to use (non-upstreamable) modifications/hacks to provide better feature/performance/support.
+ImmortalWrt 是 [OpenWrt](https://openwrt.org) 的一个分支，移植了更多的软件包，支持更多的设备，默认优化配置，并为中国大陆用户进行了本地化修改。<br/>
+与上游相比，我们允许使用（无法上游的）修改/优化来提供更好的功能/性能/支持。
 
-Default login address: http://192.168.1.1 or http://immortalwrt.lan, username: __root__, password: _none_.
+**默认管理地址**：http://192.168.32.10，用户名：__root__，密码：__passwd__
 
-## Download
-Built firmware images are available for many architectures and come with a package selection to be used as WiFi home router. To quickly find a factory image usable to migrate from a vendor stock firmware to ImmortalWrt, try the *Firmware Selector*.
+> ⚠️ **重要提示**：本固件只适用 X86 软路由，未适配任何硬路由。
 
-- [ImmortalWrt Firmware Selector](https://firmware-selector.immortalwrt.org/)
+## 下载
+已构建的固件镜像可用于多种架构，并带有软件包选择，可用作 WiFi 家庭路由器。要快速找到可用于从厂商原厂固件迁移到 ImmortalWrt 的工厂镜像，请尝试 *固件选择器*。
 
-If your device is supported, please follow the **Info** link to see install instructions or consult the support resources listed below.
+- [ImmortalWrt 固件选择器](https://firmware-selector.immortalwrt.org/)
 
-## Development
-To build your own firmware you need a GNU/Linux, BSD or macOS system (case sensitive filesystem required). Cygwin is unsupported because of the lack of a case sensitive file system.<br/>
+如果您的设备受支持，请按照 **信息** 链接查看安装说明，或查阅下面列出的支持资源。
 
-  ### Requirements
-  To build with this project, Debian 11 is preferred. And you need use the CPU based on AMD64 architecture, with at least 4GB RAM and 25 GB available disk space. Make sure the __Internet__ is accessible.
+## 开发
+要构建自己的固件，您需要 GNU/Linux、BSD 或 macOS 系统（需要区分大小写的文件系统）。Cygwin 不支持，因为缺乏区分大小写的文件系统。<br/>
 
-  The following tools are needed to compile ImmortalWrt, the package names vary between distributions.
+  ### 要求
+  要使用此项目进行构建，首选 Debian 11。您需要使用基于 AMD64 架构的 CPU，至少 4GB RAM 和 25GB 可用磁盘空间。确保可以访问 __互联网__。
 
-  - Here is an example for Debian/Ubuntu users:<br/>
-    - Method 1:
+  编译 ImmortalWrt 需要以下工具，不同发行版的软件包名称有所不同。
+
+  - 以下是 Debian/Ubuntu 用户的示例：<br/>
+    - 方法 1:
       <details>
-        <summary>Setup dependencies via APT</summary>
+        <summary>通过 APT 设置依赖项</summary>
 
         ```bash
         sudo apt update -y
@@ -40,50 +42,51 @@ To build your own firmware you need a GNU/Linux, BSD or macOS system (case sensi
           upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
         ```
       </details>
-    - Method 2:
+    - 方法 2:
       ```bash
       sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
       ```
 
-  Note:
-  - Do everything as an unprivileged user, not root, without sudo.
-  - Using CPUs based on other architectures should be fine to compile ImmortalWrt, but more hacks are needed - No warranty at all.
-  - You must __not__ have spaces or non-ascii characters in PATH or in the work folders on the drive.
-  - If you're using Windows Subsystem for Linux (or WSL), removing Windows folders from PATH is required, please see [Build system setup WSL](https://openwrt.org/docs/guide-developer/build-system/wsl) documentation.
-  - Using macOS as the host build OS is __not__ recommended. No warranty at all. You can get tips from [Build system setup macOS](https://openwrt.org/docs/guide-developer/build-system/buildroot.exigence.macosx) documentation.
-  - For more details, please see [Build system setup](https://openwrt.org/docs/guide-developer/build-system/install-buildsystem) documentation.
+  注意：
+  - 以非特权用户身份执行所有操作，不要使用 root，不要使用 sudo。
+  - 使用基于其他架构的 CPU 应该可以编译 ImmortalWrt，但需要更多优化 - 完全不保证。
+  - 您必须 __不要__ 在 PATH 或驱动器上的工作文件夹中使用空格或非 ASCII 字符。
+  - 如果您使用 Windows Subsystem for Linux（或 WSL），需要从 PATH 中删除 Windows 文件夹，请参阅 [Build system setup WSL](https://openwrt.org/docs/guide-developer/build-system/wsl) 文档。
+  - 使用 macOS 作为主机构建操作系统 __不推荐__。完全不保证。您可以从 [Build system setup macOS](https://openwrt.org/docs/guide-developer/build-system/buildroot.exigence.macosx) 文档中获取提示。
+  - 更多详情，请参阅 [Build system setup](https://openwrt.org/docs/guide-developer/build-system/install-buildsystem) 文档。
 
-  ### Quickstart
-  1. Run `git clone -b <branch> --single-branch --filter=blob:none https://github.com/immortalwrt/immortalwrt` to clone the source code.
-  2. Run `cd immortalwrt` to enter source directory.
-  3. Run `./scripts/feeds update -a` to obtain all the latest package definitions defined in feeds.conf / feeds.conf.default
-  4. Run `./scripts/feeds install -a` to install symlinks for all obtained packages into package/feeds/
-  5. Run `make menuconfig` to select your preferred configuration for the toolchain, target system & firmware packages.
-  6. Run `make` to build your firmware. This will download all sources, build the cross-compile toolchain and then cross-compile the GNU/Linux kernel & all chosen applications for your target system.
+  ### 快速开始
+  1. 运行 `git clone -b <branch> --single-branch --filter=blob:none https://github.com/zxmlysxl/immortalwrt` 克隆源代码。
+  2. 运行 `cd immortalwrt` 进入源代码目录。
+  3. 运行 `./scripts/feeds update -a` 获取 feeds.conf / feeds.conf.default 中定义的所有最新软件包定义。
+  4. 运行 `./scripts/feeds install -a` 为所有获取的软件包安装符号链接到 package/feeds/。
+  5. 运行 `make menuconfig` 选择您的工具链、目标系统和固件软件包的首选配置。
+  6. 运行 `make` 构建您的固件。这将下载所有源代码，构建交叉编译工具链，然后为您的目标系统交叉编译 GNU/Linux 内核和所有选择的应用程序。
 
-  ### Related Repositories
-  The main repository uses multiple sub-repositories to manage packages of different categories. All packages are installed via the OpenWrt package manager called opkg. If you're looking to develop the web interface or port packages to ImmortalWrt, please find the fitting repository below.
-  - [LuCI Web Interface](https://github.com/immortalwrt/luci): Modern and modular interface to control the device via a web browser.
-  - [ImmortalWrt Packages](https://github.com/immortalwrt/packages): Community repository of ported packages.
-  - [OpenWrt Routing](https://github.com/openwrt/routing): Packages specifically focused on (mesh) routing.
-  - [OpenWrt Video](https://github.com/openwrt/video): Packages specifically focused on display servers and clients (Xorg and Wayland).
+  ### 相关仓库
+  主仓库使用多个子仓库来管理不同类别的软件包。所有软件包都通过名为 opkg 的 OpenWrt 软件包管理器安装。如果您想开发 Web 界面或将软件包移植到 ImmortalWrt，请在下面找到合适的仓库。
+  - [LuCI Web 界面](https://github.com/zxmlysxl/immortalwrt): 现代化模块化界面，通过浏览器控制设备。
+  - [ImmortalWrt Packages](https://github.com/zxmlysxl/immortalwrt): 移植软件包的社区仓库。
+  - [OpenWrt Routing](https://github.com/openwrt/routing): 专注于（mesh）路由的软件包。
+  - [OpenWrt Video](https://github.com/openwrt/video): 专注于显示服务器和客户端（Xorg 和 Wayland）的软件包。
 
-## Support Information
-For a list of supported devices see the [OpenWrt Hardware Database](https://openwrt.org/supported_devices)
-  ### Documentation
-  - [Quick Start Guide](https://openwrt.org/docs/guide-quick-start/start)
-  - [User Guide](https://openwrt.org/docs/guide-user/start)
-  - [Developer Documentation](https://openwrt.org/docs/guide-developer/start)
-  - [Technical Reference](https://openwrt.org/docs/techref/start)
+## 支持信息
+有关受支持设备的列表，请参阅 [OpenWrt 硬件数据库](https://openwrt.org/supported_devices)
 
-  ### Support Community
-  - Support Chat: group [@ctcgfw_openwrt_discuss](https://t.me/ctcgfw_openwrt_discuss) on [Telegram](https://telegram.org/).
-  - Support Chat: group [#immortalwrt](https://matrix.to/#/#immortalwrt:matrix.org) on [Matrix](https://matrix.org/).
+  ### 文档
+  - [快速入门指南](https://openwrt.org/docs/guide-quick-start/start)
+  - [用户指南](https://openwrt.org/docs/guide-user/start)
+  - [开发者文档](https://openwrt.org/docs/guide-developer/start)
+  - [技术参考](https://openwrt.org/docs/techref/start)
 
-## License
-ImmortalWrt is licensed under [GPL-2.0-only](https://spdx.org/licenses/GPL-2.0-only.html).
+  ### 支持社区
+  - 支持聊天：[Telegram](https://telegram.org/) 上的 [@ctcgfw_openwrt_discuss](https://t.me/ctcgfw_openwrt_discuss) 群组。
+  - 支持聊天：[Matrix](https://matrix.org/) 上的 [#immortalwrt](https://matrix.to/#/#immortalwrt:matrix.org) 群组。
 
-## Acknowledgements
+## 许可证
+ImmortalWrt 根据 [GPL-2.0-only](https://spdx.org/licenses/GPL-2.0-only.html) 许可。
+
+## 致谢
 <table>
   <tr>
     <td><a href="https://dlercloud.com/"><img src="https://user-images.githubusercontent.com/22235437/111103249-f9ec6e00-8588-11eb-9bfc-67cc55574555.png" width="183" height="52" border="0" alt="Dler Cloud"></a></td>

@@ -138,6 +138,7 @@ jobs:
           ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
 
       - name: Rename and package firmware
+        id: rename
         run: |
           echo "=== 检查编译产物 ==="
           find bin -type f -name "*.img*" 2>/dev/null || echo "No img files"
@@ -161,7 +162,7 @@ jobs:
           
           BASENAME=$(basename "$SOURCE_FILE")
           DATE=$(date +%Y%m%d)
-          TARGET_FILE="Z-ImmWrt-${DATE}-zuoxm-x86_64-efi.img.gz"
+          TARGET_FILE="Z-ImmWrt-v${DATE}.img.gz"
           
           cp "$SOURCE_FILE" "$TARGET_FILE"
           sha256sum "$TARGET_FILE" > "${TARGET_FILE}.sha256"
@@ -170,12 +171,15 @@ jobs:
           echo "   源文件：$BASENAME"
           echo "   目标文件：$TARGET_FILE"
           ls -lh "$TARGET_FILE" "${TARGET_FILE}.sha256"
+          
+          # 设置日期输出供 release 使用
+          echo "date=${DATE}" >> $GITHUB_OUTPUT
 
       - name: Upload to Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: ImmortalWrt x86_64 EFI - ${{ github.run_number }}
+          tag_name: v${{ steps.date.outputs.date }}
+          name: Z-ImmWrt v${{ steps.date.outputs.date }}
           body: |
             **Build Time:** ${{ github.event.head_commit.timestamp }}
             **Commit:** ${{ github.sha }}

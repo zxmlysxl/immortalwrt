@@ -66,11 +66,7 @@ jobs:
           echo "=== Step 4: Restore .config ==="
           cp .config.backup .config
           
-          echo "=== Step 5: Sync config with new feeds ==="
-          # 同步配置，确保与新安装的 feeds 匹配
-          make defconfig
-          
-          echo "=== Step 6: Verify luci ==="
+          echo "=== Step 5: Verify luci ==="
           if [ -d "feeds/luci/collections/luci" ]; then
             echo "✅ luci collection exists"
             ls feeds/luci/collections/

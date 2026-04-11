@@ -59,9 +59,9 @@ jobs:
           echo "=== Step 2: Update feeds ==="
           ./scripts/feeds update -a
           
-          echo "=== Step 3: Install feeds (只安装非 LuCI 包) ==="
-          # 不安装所有包，避免覆盖 .config 配置
-          ./scripts/feeds install -a -p packages -p routing -p telephony -p video -p zuoxm
+          echo "=== Step 3: Install feeds (安装所有 feeds) ==="
+          # 安装所有 feeds 包括 luci 和 zuoxm
+          ./scripts/feeds install -a
           
           echo "=== Step 4: Restore .config ==="
           cp .config.backup .config

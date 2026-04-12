@@ -67,10 +67,12 @@ jobs:
           echo "=== Step 4: Remove problematic packages AFTER feeds install ==="
           # Remove problematic package configs AFTER feeds install
           # This prevents recursive dependency errors during make oldconfig
-          sed -i '/openvswitch/d' .config
-          sed -i '/ovsd/d' .config
-          sed -i '/mihomo/d' .config
-          sed -i '/shadowsocksr/d' .config
+          # Be specific: only remove the exact problematic packages, not all matching lines
+          sed -i '/CONFIG_PACKAGE.*openvswitch/d' .config
+          sed -i '/CONFIG_PACKAGE.*ovsd/d' .config
+          sed -i '/CONFIG_PACKAGE.*mihomo/d' .config
+          # Only remove shadowsocksr-libev itself, not passwall2's ss support
+          sed -i '/CONFIG_PACKAGE_shadowsocksr-libev/d' .config
           
           echo "=== Step 5: Sync config with make oldconfig ==="
           # 使用 oldconfig 而不是 defconfig，保留现有配置

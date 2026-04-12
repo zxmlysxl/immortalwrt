@@ -181,8 +181,8 @@ jobs:
       - name: Upload to Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.date.outputs.date }}
-          name: Z-ImmWrt v${{ steps.date.outputs.date }}
+          tag_name: v${{ steps.rename.outputs.date }}
+          name: Z-ImmWrt v${{ steps.rename.outputs.date }}
           body: |
             **Build Time:** ${{ github.event.head_commit.timestamp }}
             **Commit:** ${{ github.sha }}

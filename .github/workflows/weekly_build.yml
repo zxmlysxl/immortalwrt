@@ -53,14 +53,8 @@ jobs:
 
       - name: Initialize feeds
         run: |
-          echo "=== Step 1: Backup and clean .config ==="
+          echo "=== Step 1: Backup .config ==="
           cp .config .config.backup
-          # Remove problematic package configs BEFORE feeds install
-          # This prevents recursive dependency errors during package collection
-          sed -i '/openvswitch/d' .config
-          sed -i '/ovsd/d' .config
-          sed -i '/mihomo/d' .config
-          sed -i '/shadowsocksr/d' .config
           
           echo "=== Step 2: Update feeds ==="
           ./scripts/feeds update -a
@@ -70,7 +64,15 @@ jobs:
           # Use -f to force install despite dependency warnings
           ./scripts/feeds install -a -f || true
           
-          echo "=== Step 4: Sync config with make oldconfig ==="
+          echo "=== Step 4: Remove problematic packages AFTER feeds install ==="
+          # Remove problematic package configs AFTER feeds install
+          # This prevents recursive dependency errors during make oldconfig
+          sed -i '/openvswitch/d' .config
+          sed -i '/ovsd/d' .config
+          sed -i '/mihomo/d' .config
+          sed -i '/shadowsocksr/d' .config
+          
+          echo "=== Step 5: Sync config with make oldconfig ==="
           # 使用 oldconfig 而不是 defconfig，保留现有配置
           # 使用 /dev/null 作为输入避免交互式提示
           make oldconfig < /dev/null || true

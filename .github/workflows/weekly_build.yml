@@ -66,12 +66,19 @@ jobs:
           echo "=== Step 4: Restore .config ==="
           cp .config.backup .config
           
-          echo "=== Step 5: Sync config with make oldconfig ==="
+          echo "=== Step 5: Remove problematic packages BEFORE oldconfig ==="
+          # 移除有递归依赖问题的包配置
+          sed -i '/openvswitch/d' .config
+          sed -i '/ovsd/d' .config
+          sed -i '/mihomo/d' .config
+          sed -i '/shadowsocksr/d' .config
+          
+          echo "=== Step 6: Sync config with make oldconfig ==="
           # 使用 oldconfig 而不是 defconfig，保留现有配置
           # 使用 /dev/null 作为输入避免交互式提示
           make oldconfig < /dev/null || true
           
-          echo "=== Step 6: Verify luci ==="
+          echo "=== Step 7: Verify luci ==="
           if [ -d "feeds/luci/collections/luci" ]; then
             echo "✅ luci collection exists"
             ls feeds/luci/collections/
@@ -82,23 +89,13 @@ jobs:
             exit 1
           fi
           
-          echo "=== Step 6: Verify .config ==="
+          echo "=== Step 8: Verify .config ==="
           echo "LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
 
       - name: Prepare config
         run: |
           echo "=== 保留原始 .config ==="
           cp .config .config.keep
-          
-          echo "=== 禁用有问题的包 ==="
-          # 移除 openvswitch 相关配置避免递归依赖
-          sed -i '/openvswitch/d' .config
-          sed -i '/ovsd/d' .config
-          sed -i '/mihomo/d' .config
-          
-          echo "=== 跳过 olddefconfig，直接使用 .config ==="
-          # olddefconfig 会移除 EFI 和 LuCI 相关配置，导致镜像无法生成
-          # 直接使用 .config 中的配置
           
           echo "=== 验证配置完整性 ==="
           echo "原始包数量：$(grep -c '^CONFIG_PACKAGE_' .config.keep)"

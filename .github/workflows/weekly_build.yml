@@ -68,8 +68,8 @@ jobs:
           
           echo "=== Step 5: Sync config with make oldconfig ==="
           # 使用 oldconfig 而不是 defconfig，保留现有配置
-          # 使用 /dev/null 作为输入避免交互式提示，并用 yes n 处理所有未知选项
-          yes n | make oldconfig 2>&1 | grep -v "Error in reading" || true
+          # 使用 /dev/null 作为输入避免交互式提示
+          make oldconfig < /dev/null || true
           
           echo "=== Step 6: Verify luci ==="
           if [ -d "feeds/luci/collections/luci" ]; then
@@ -93,6 +93,8 @@ jobs:
           echo "=== 禁用有问题的包 ==="
           # 移除 openvswitch 相关配置避免递归依赖
           sed -i '/openvswitch/d' .config
+          sed -i '/ovsd/d' .config
+          sed -i '/mihomo/d' .config
           
           echo "=== 跳过 olddefconfig，直接使用 .config ==="
           # olddefconfig 会移除 EFI 和 LuCI 相关配置，导致镜像无法生成

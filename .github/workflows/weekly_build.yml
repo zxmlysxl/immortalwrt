@@ -68,7 +68,8 @@ jobs:
           
           echo "=== Step 5: Sync config with make oldconfig ==="
           # 使用 oldconfig 而不是 defconfig，保留现有配置
-          make oldconfig
+          # 使用 /dev/null 作为输入避免交互式提示，并用 yes n 处理所有未知选项
+          yes n | make oldconfig 2>&1 | grep -v "Error in reading" || true
           
           echo "=== Step 6: Verify luci ==="
           if [ -d "feeds/luci/collections/luci" ]; then

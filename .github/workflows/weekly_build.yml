@@ -53,55 +53,53 @@ jobs:
 
       - name: Initialize feeds
         run: |
-          echo "=== Step 1: Backup and clean .config ==="
-          cp .config .config.backup
-          # Remove problematic package configs BEFORE feeds install
-          # This prevents recursive dependency errors during package collection
-          # Be specific: only remove the exact problematic packages
+          echo "=== Step 1: Backup original .config ==="
+          cp .config .config.original
+          echo "   LuCI packages in original: $(grep -c '^CONFIG_PACKAGE_luci' .config.original)"
+          
+          echo "=== Step 2: Extract luci-app packages list ==="
+          grep '^CONFIG_PACKAGE_luci-app' .config.original > /tmp/luci-apps.txt
+          echo "   Found $(wc -l < /tmp/luci-apps.txt) luci-app packages"
+          
+          echo "=== Step 3: Remove problematic packages ==="
           sed -i '/^CONFIG_PACKAGE.*openvswitch/d' .config
           sed -i '/^CONFIG_PACKAGE.*ovsd/d' .config
           sed -i '/^CONFIG_PACKAGE.*mihomo/d' .config
           sed -i '/^CONFIG_PACKAGE_shadowsocksr-libev/d' .config
           
-          echo "=== Step 2: Update feeds ==="
+          echo "=== Step 4: Update feeds ==="
           ./scripts/feeds update -a
           
-          echo "=== Step 3: Install feeds (安装所有 feeds) ==="
-          # 安装所有 feeds 包括 luci 和 zuoxm
-          # Use -f to force install despite dependency warnings
+          echo "=== Step 5: Install feeds ==="
           ./scripts/feeds install -a -f || true
           
-          echo "=== Step 4: Sync config with make oldconfig ==="
-          # 使用 oldconfig 而不是 defconfig，保留现有配置
-          # 使用 /dev/null 作为输入避免交互式提示
+          echo "=== Step 6: Sync with oldconfig ==="
           make oldconfig < /dev/null || true
           
-          echo "=== Step 5: Verify luci ==="
-          if [ -d "feeds/luci/collections/luci" ]; then
-            echo "✅ luci collection exists"
-            ls feeds/luci/collections/
-          else
-            echo "❌ luci collection NOT found!"
-            echo "Available feeds:"
-            ls -la feeds/
-            exit 1
-          fi
+          echo "=== Step 7: Restore luci-app packages ==="
+          # Restore luci-app packages that were in original .config
+          while IFS= read -r pkg; do
+            base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
+            if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+              sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+              echo "   ✅ Restored: $base_pkg"
+            fi
+          done < /tmp/luci-apps.txt
           
-          echo "=== Step 6: Verify .config ==="
-          echo "LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
+          echo "=== Step 8: Final oldconfig to verify ==="
+          make oldconfig < /dev/null || true
+          
+          echo "=== Step 9: Verify .config ==="
+          echo "   LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
 
       - name: Prepare config
         run: |
-          echo "=== 保留原始 .config ==="
-          cp .config .config.keep
-          
           echo "=== 验证配置完整性 ==="
-          echo "原始包数量：$(grep -c '^CONFIG_PACKAGE_' .config.keep)"
-          echo "最终包数量：$(grep -c '^CONFIG_PACKAGE_' .config)"
-          echo "LuCI 包数量：$(grep -c '^CONFIG_PACKAGE_luci' .config)"
+          echo "原始 LuCI 包数量：$(grep -c '^CONFIG_PACKAGE_luci' .config.original)"
+          echo "最终 LuCI 包数量：$(grep -c '^CONFIG_PACKAGE_luci' .config)"
+          echo "总包数量：$(grep -c '^CONFIG_PACKAGE_' .config)"
           echo "EFI Images: $(grep 'CONFIG_EFI' .config || echo 'NOT FOUND')"
           echo "GRUB EFI: $(grep 'CONFIG_GRUB_EFI' .config || echo 'NOT FOUND')"
-          echo "VMDK: $(grep 'CONFIG_VMDK' .config || echo 'NOT FOUND')"
           echo "EXT4FS: $(grep 'CONFIG_TARGET_ROOTFS_EXT4FS' .config || echo 'NOT FOUND')"
 
       - name: Install qemu-img
@@ -116,20 +114,15 @@ jobs:
         run: |
           echo "=== 开始编译 ==="
           echo "CPU cores: $(nproc)"
-          echo "=== 当前目录 ==="
-          pwd
-          echo "=== .config 中的目标平台 ==="
-          grep "CONFIG_TARGET" .config | head -10
           
-          echo "=== 第一步：编译工具链和包 (V=s 详细日志) ==="
-          make -j$(nproc) V=s 2>&1 | tee /tmp/build.log | tail -200
+          echo "=== 第一步：编译工具链和包 ==="
+          make -j$(nproc) V=s 2>&1 | tee /tmp/build.log | tail -300
           
-          echo "=== 第二步：生成镜像 (target/install) ==="
-          make target/install 2>&1 | tee -a /tmp/build.log | tail -50
+          echo "=== 第二步：生成镜像 ==="
+          make target/install 2>&1 | tee -a /tmp/build.log | tail -100
           
           echo "=== 编译结束 ==="
           echo "=== 检查 bin 目录 ==="
-          ls -la bin/ 2>/dev/null || echo "bin dir not found"
           ls -la bin/targets/x86/64/ 2>/dev/null || echo "targets dir not found"
           find bin -name "*.img*" -o -name "*.vmdk*" -o -name "*.ext4*" 2>/dev/null | head -20 || echo "No image files"
 
@@ -137,6 +130,7 @@ jobs:
         run: |
           echo "=== 检查编译产物 ==="
           find bin/targets -name "*.img.gz" -ls 2>/dev/null || echo "No img.gz found"
+          find bin/targets -name "*.manifest" -exec cat {} \; 2>/dev/null | grep -c "luci-app" || echo "0 luci-app in manifest"
           ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
 
       - name: Rename and package firmware
@@ -145,7 +139,7 @@ jobs:
           echo "=== 检查编译产物 ==="
           find bin -type f -name "*.img*" 2>/dev/null || echo "No img files"
           
-          # 优先选择 ext4-combined-efi 文件（完整固件 ~148MB）
+          # 优先选择 ext4-combined-efi 文件
           SOURCE_FILE=$(find bin/targets -type f -name "*ext4-combined-efi.img.gz" 2>/dev/null | head -1)
           
           # 如果没有 ext4 文件，再尝试其他格式
@@ -155,12 +149,13 @@ jobs:
           
           if [ -z "$SOURCE_FILE" ]; then
             echo "❌ 未找到固件文件"
-            echo "=== bin 目录内容 ==="
             ls -laR bin/ | head -50
             exit 1
           fi
           
           echo "✅ 找到固件：$SOURCE_FILE"
+          FIRM_SIZE=$(du -h "$SOURCE_FILE" | cut -f1)
+          echo "   Firmware size: $FIRM_SIZE"
           
           BASENAME=$(basename "$SOURCE_FILE")
           DATE=$(date +%Y%m%d)
@@ -174,7 +169,6 @@ jobs:
           echo "   目标文件：$TARGET_FILE"
           ls -lh "$TARGET_FILE" "${TARGET_FILE}.sha256"
           
-          # 设置日期输出供 release 使用
           echo "date=${DATE}" >> $GITHUB_OUTPUT
 
       - name: Upload to Releases
@@ -186,7 +180,8 @@ jobs:
             **Build Time:** ${{ github.event.head_commit.timestamp }}
             **Commit:** ${{ github.sha }}
             **Platform:** x86_64 EFI
-            **Firmware Size:** $(ls -lh Z-ImmWrt-*.img.gz | awk '{print $5}')
+            **Firmware Size:** $(ls -lh Z-ImmWrt-*.img.gz | awk '{print $2}')
+            **Packages:** $(grep -c '^CONFIG_PACKAGE_' .config) total, $(grep -c '^CONFIG_PACKAGE_luci' .config) luci
           files: |
             Z-ImmWrt-*.img.gz
             Z-ImmWrt-*.sha256

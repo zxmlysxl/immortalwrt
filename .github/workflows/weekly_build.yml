@@ -16,6 +16,10 @@ on:
         description: 'Clean build (rebuild everything)'
         required: false
         default: 'false'
+      sync_upstream:
+        description: 'Sync with upstream before build'
+        required: false
+        default: 'false'
 
 jobs:
   build:
@@ -28,6 +32,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up git config
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
 
       - name: Display .config info
         run: |
@@ -41,14 +51,40 @@ jobs:
             exit 1
           fi
 
+      - name: Sync with upstream (optional)
+        if: github.event.inputs.sync_upstream == 'true'
+        run: |
+          echo "=== 同步上游代码 ==="
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git 2>/dev/null || true
+          git fetch upstream master
+          git merge upstream/master --no-edit
+          echo "✅ 上游同步完成"
+
+      - name: Update compile_info
+        run: |
+          echo "=== 更新 compile_info ==="
+          BUILD_DATE=$(date +%Y%m%d%H%M)
+          echo "Z-ImmortalWrt ${BUILD_DATE} by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
+          echo "   Build info: $(cat files/etc/compile_info)"
+          git config --global --add safe.directory '*'
+
       - name: Copy custom files
         run: |
+          echo "=== 复制自定义文件 ==="
           if [ -d "files" ]; then
-            echo "📁 Copying custom files..."
-            cp -rf files/* ./
-            echo "✅ Custom files copied"
+            echo "📁 files 目录内容："
+            find files -type f | head -20
+            echo ""
+            echo "📁 复制 files/* 到构建目录..."
+            cp -rfv files/* ./ 2>&1 | head -30
+            echo "✅ 自定义文件复制完成"
+            echo ""
+            echo "验证复制结果："
+            ls -la etc/compile_info 2>/dev/null && cat etc/compile_info
+            ls -la root/.zshrc 2>/dev/null && echo "✅ .zshrc exists"
+            ls -la root/.oh-my-zsh 2>/dev/null && echo "✅ .oh-my-zsh exists"
           else
-            echo "⚠️ No files directory to copy"
+            echo "⚠️ files 目录不存在"
           fi
 
       - name: Initialize feeds
@@ -77,7 +113,6 @@ jobs:
           make oldconfig < /dev/null || true
           
           echo "=== Step 7: Restore luci-app packages ==="
-          # Restore luci-app packages that were in original .config
           while IFS= read -r pkg; do
             base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
             if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then

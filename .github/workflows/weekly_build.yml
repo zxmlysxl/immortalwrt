@@ -60,32 +60,30 @@ jobs:
           git merge upstream/master --no-edit
           echo "✅ 上游同步完成"
 
+      - name: Verify files directory
+        run: |
+          echo "=== 检查 files 目录结构 ==="
+          if [ -d "files" ]; then
+            echo "✅ files 目录存在"
+            echo ""
+            echo "📁 files/root/:"
+            find files/root -type f 2>/dev/null | head -20
+            echo ""
+            echo "📁 files/etc/:"
+            find files/etc -type f 2>/dev/null | head -10
+            echo ""
+            echo "总计文件数: $(find files -type f | wc -l)"
+          else
+            echo "⚠️ files 目录不存在"
+            exit 1
+          fi
+
       - name: Update compile_info
         run: |
           echo "=== 更新 compile_info ==="
           BUILD_DATE=$(date +%Y%m%d%H%M)
           echo "Z-ImmortalWrt ${BUILD_DATE} by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
           echo "   Build info: $(cat files/etc/compile_info)"
-          git config --global --add safe.directory '*'
-
-      - name: Copy custom files
-        run: |
-          echo "=== 复制自定义文件 ==="
-          if [ -d "files" ]; then
-            echo "📁 files 目录内容："
-            find files -type f | head -20
-            echo ""
-            echo "📁 复制 files/* 到构建目录..."
-            cp -rfv files/* ./ 2>&1 | head -30
-            echo "✅ 自定义文件复制完成"
-            echo ""
-            echo "验证复制结果："
-            ls -la etc/compile_info 2>/dev/null && cat etc/compile_info
-            ls -la root/.zshrc 2>/dev/null && echo "✅ .zshrc exists"
-            ls -la root/.oh-my-zsh 2>/dev/null && echo "✅ .oh-my-zsh exists"
-          else
-            echo "⚠️ files 目录不存在"
-          fi
 
       - name: Initialize feeds
         run: |
@@ -153,7 +151,9 @@ jobs:
           echo "=== 第一步：编译工具链和包 ==="
           make -j$(nproc) V=s 2>&1 | tee /tmp/build.log | tail -300
           
-          echo "=== 第二步：生成镜像 ==="
+          echo "=== 第二步：生成镜像（包含files目录） ==="
+          # OpenWrt automatically includes files/ from source root into rootfs
+          # Remove the redundant copy step - OpenWrt handles it
           make target/install 2>&1 | tee -a /tmp/build.log | tail -100
           
           echo "=== 编译结束 ==="

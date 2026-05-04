@@ -95,6 +95,14 @@ jobs:
           grep '^CONFIG_PACKAGE_luci-app' .config.original > /tmp/luci-apps.txt
           echo "   Found $(wc -l < /tmp/luci-apps.txt) luci-app packages"
           
+          echo "=== Step 2b: Extract theme packages list ==="
+          grep '^CONFIG_PACKAGE_luci-theme' .config.original > /tmp/luci-themes.txt
+          echo "   Found $(wc -l < /tmp/luci-themes.txt) theme packages"
+          
+          echo "=== Step 2c: Extract zsh package ==="
+          grep '^CONFIG_PACKAGE_zsh=' .config.original > /tmp/zsh-package.txt || true
+          echo "   zsh package: $(cat /tmp/zsh-package.txt 2>/dev/null || echo 'not found')"
+          
           echo "=== Step 3: Remove problematic packages ==="
           sed -i '/^CONFIG_PACKAGE.*openvswitch/d' .config
           sed -i '/^CONFIG_PACKAGE.*ovsd/d' .config
@@ -119,11 +127,31 @@ jobs:
             fi
           done < /tmp/luci-apps.txt
           
+          echo "=== Step 7b: Restore theme packages ==="
+          while IFS= read -r pkg; do
+            base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
+            if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+              sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+              echo "   ✅ Restored theme: $base_pkg"
+            fi
+          done < /tmp/luci-themes.txt
+          
+          echo "=== Step 7c: Restore zsh package ==="
+          while IFS= read -r pkg; do
+            base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
+            if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+              sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+              echo "   ✅ Restored: $base_pkg"
+            fi
+          done < /tmp/zsh-package.txt
+          
           echo "=== Step 8: Final oldconfig to verify ==="
           make oldconfig < /dev/null || true
           
           echo "=== Step 9: Verify .config ==="
           echo "   LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
+          echo "   Theme packages after restore: $(grep -c '^CONFIG_PACKAGE_luci-theme' .config)"
+          echo "   zsh package: $(grep '^CONFIG_PACKAGE_zsh=' .config || echo 'NOT FOUND')"
 
       - name: Prepare config
         run: |

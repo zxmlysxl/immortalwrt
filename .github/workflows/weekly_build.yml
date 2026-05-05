@@ -100,6 +100,14 @@ jobs:
           echo "   Found $(wc -l < /tmp/luci-themes.txt) theme packages"
           
           echo "=== Step 2c: Extract zsh package ==="
+
+          echo "=== Step 2d: Extract luci-mod packages list ==="
+          grep '^CONFIG_PACKAGE_luci-mod' .config.original > /tmp/luci-mods.txt
+          echo "   Found $(wc -l < /tmp/luci-mods.txt) luci-mod packages"
+
+          echo "=== Step 2e: Extract luci-i18n packages list ==="
+          grep '^CONFIG_PACKAGE_luci-i18n' .config.original > /tmp/luci-i18n.txt || true
+          echo "   Found $(wc -l < /tmp/luci-i18n.txt 2>/dev/null || echo 0) luci-i18n packages"
           grep '^CONFIG_PACKAGE_zsh=' .config.original > /tmp/zsh-package.txt || true
           echo "   zsh package: $(cat /tmp/zsh-package.txt 2>/dev/null || echo 'not found')"
           
@@ -145,6 +153,24 @@ jobs:
             fi
           done < /tmp/zsh-package.txt
           
+
+          echo "=== Step 7d: Restore luci-mod packages ==="
+          while IFS= read -r pkg; do
+            base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
+            if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+              sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+              echo "   ✅ Restored mod: $base_pkg"
+            fi
+          done < /tmp/luci-mods.txt
+
+          echo "=== Step 7e: Restore luci-i18n packages ==="
+          while IFS= read -r pkg; do
+            base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
+            if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+              sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+              echo "   ✅ Restored i18n: $base_pkg"
+            fi
+          done < /tmp/luci-i18n.txt 2>/dev/null || true
           echo "=== Step 8: Final oldconfig to verify ==="
           make oldconfig < /dev/null || true
           

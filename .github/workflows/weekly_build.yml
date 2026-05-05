@@ -248,7 +248,8 @@ jobs:
           
           BASENAME=$(basename "$SOURCE_FILE")
           DATE=$(date +%Y%m%d)
-          TARGET_FILE="Z-ImmWrt-v${DATE}.img.gz"
+          # 新命名格式：Z-ImmWrt-YYYYMMDD-zuoxm-x86_64-efi.img.gz
+          TARGET_FILE="Z-ImmWrt-${DATE}-zuoxm-x86_64-efi.img.gz"
           
           cp "$SOURCE_FILE" "$TARGET_FILE"
           sha256sum "$TARGET_FILE" > "${TARGET_FILE}.sha256"
@@ -263,8 +264,8 @@ jobs:
       - name: Upload to Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: Z-ImmWrt-v${{ steps.rename.outputs.date }}
-          name: Z-ImmWrt-v${{ steps.rename.outputs.date }}
+          tag_name: Z-ImmWrt-${{ steps.rename.outputs.date }}
+          name: Z-ImmWrt-${{ steps.rename.outputs.date }}
           body: |
             **Build Time:** ${{ github.event.head_commit.timestamp }}
             **Commit:** ${{ github.sha }}

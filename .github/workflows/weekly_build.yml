@@ -112,10 +112,16 @@ jobs:
           echo "   zsh package: $(cat /tmp/zsh-package.txt 2>/dev/null || echo 'not found')"
           
           echo "=== Step 3: Remove problematic packages ==="
+          # 完全移除有冲突的包
           sed -i '/^CONFIG_PACKAGE.*openvswitch/d' .config
           sed -i '/^CONFIG_PACKAGE.*ovsd/d' .config
-          sed -i '/^CONFIG_PACKAGE.*mihomo/d' .config
           sed -i '/^CONFIG_PACKAGE_shadowsocksr-libev/d' .config
+          # mihomo-alpha 与 mihomo-meta 互斥，只能保留 meta（openclash 依赖它）
+          sed -i '/^CONFIG_PACKAGE_mihomo-alpha/d' .config
+          # 禁用 passwall2 中依赖 shadowsocksr-libev 的 include 选项
+          sed -i '/INCLUDE_ShadowsocksR_Libev_Client/d' .config
+          sed -i '/INCLUDE_Shadowsocks_Libev_Client/d' .config
+          echo "   ✅ Problematic packages removed"
           
           echo "=== Step 4: Update feeds ==="
           ./scripts/feeds update -a
@@ -127,11 +133,17 @@ jobs:
           make oldconfig < /dev/null || true
           
           echo "=== Step 7: Restore luci-app packages ==="
+          # Restore luci-app packages: handle both # is not set AND completely missing lines
           while IFS= read -r pkg; do
             base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
             if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+              # Case 1: commented out
               sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
-              echo "   ✅ Restored: $base_pkg"
+              echo "   ✅ Restored (uncommented): $base_pkg"
+            elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
+              # Case 2: completely missing — add it back
+              echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+              echo "   ✅ Restored (added): $base_pkg"
             fi
           done < /tmp/luci-apps.txt
           
@@ -140,7 +152,10 @@ jobs:
             base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
             if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
               sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
-              echo "   ✅ Restored theme: $base_pkg"
+              echo "   ✅ Restored theme (uncommented): $base_pkg"
+            elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
+              echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+              echo "   ✅ Restored theme (added): $base_pkg"
             fi
           done < /tmp/luci-themes.txt
           
@@ -159,7 +174,10 @@ jobs:
             base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
             if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
               sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
-              echo "   ✅ Restored mod: $base_pkg"
+              echo "   ✅ Restored mod (uncommented): $base_pkg"
+            elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
+              echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+              echo "   ✅ Restored mod (added): $base_pkg"
             fi
           done < /tmp/luci-mods.txt
 
@@ -168,7 +186,10 @@ jobs:
             base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
             if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
               sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
-              echo "   ✅ Restored i18n: $base_pkg"
+              echo "   ✅ Restored i18n (uncommented): $base_pkg"
+            elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
+              echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+              echo "   ✅ Restored i18n (added): $base_pkg"
             fi
           done < /tmp/luci-i18n.txt 2>/dev/null || true
           echo "=== Step 8: Final oldconfig to verify ==="

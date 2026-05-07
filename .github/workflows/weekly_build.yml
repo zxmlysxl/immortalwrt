@@ -192,14 +192,19 @@ jobs:
               echo "   ✅ Restored i18n (added): $base_pkg"
             fi
           done < /tmp/luci-i18n.txt 2>/dev/null || true
-          echo "=== Step 8: Final defconfig to lock in restored packages ==="
+          echo "=== Step 8: Enable Chinese language support ==="
+          echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
+          echo "   ✅ Enabled CONFIG_LUCI_LANG_zh-cn"
+          
+          echo "=== Step 9: Final defconfig to lock in restored packages ==="
           # Use defconfig instead of oldconfig to avoid undoing the restore work
           make defconfig 2>&1 || true
           
-          echo "=== Step 9: Verify .config ==="
+          echo "=== Step 10: Verify .config ==="
           echo "   LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
           echo "   Theme packages after restore: $(grep -c '^CONFIG_PACKAGE_luci-theme' .config)"
           echo "   zsh package: $(grep '^CONFIG_PACKAGE_zsh=' .config || echo 'NOT FOUND')"
+          echo "   Chinese lang: $(grep '^CONFIG_LUCI_LANG_zh-cn' .config || echo 'NOT FOUND')"
 
       - name: Prepare config
         run: |

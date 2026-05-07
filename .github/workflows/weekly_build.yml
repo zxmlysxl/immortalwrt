@@ -192,8 +192,9 @@ jobs:
               echo "   ✅ Restored i18n (added): $base_pkg"
             fi
           done < /tmp/luci-i18n.txt 2>/dev/null || true
-          echo "=== Step 8: Final oldconfig to verify ==="
-          make oldconfig < /dev/null || true
+          echo "=== Step 8: Final defconfig to lock in restored packages ==="
+          # Use defconfig instead of oldconfig to avoid undoing the restore work
+          make defconfig 2>&1 || true
           
           echo "=== Step 9: Verify .config ==="
           echo "   LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"

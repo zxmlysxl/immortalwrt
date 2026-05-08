@@ -192,6 +192,33 @@ jobs:
               echo "   ✅ Restored i18n (added): $base_pkg"
             fi
           done < /tmp/luci-i18n.txt 2>/dev/null || true
+          
+          echo "=== Step 7f: Restore luci-proto packages (including luci-proto-wireguard) ==="
+          grep '^CONFIG_PACKAGE_luci-proto' .config.original > /tmp/luci-protos.txt || true
+          while IFS= read -r pkg; do
+            base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
+            if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+              sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+              echo "   ✅ Restored proto (uncommented): $base_pkg"
+            elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
+              echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+              echo "   ✅ Restored proto (added): $base_pkg"
+            fi
+          done < /tmp/luci-protos.txt 2>/dev/null || true
+          
+          echo "=== Step 7g: Restore wireguard-related kernel/tools ==="
+          grep '^CONFIG_PACKAGE_kmod-wireguard\|^CONFIG_PACKAGE_wireguard-tools' .config.original > /tmp/wireguard-tools.txt 2>/dev/null || true
+          while IFS= read -r pkg; do
+            base_pkg=$(echo "$pkg" | sed 's/CONFIG_PACKAGE_//;s/=y//')
+            if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+              sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+              echo "   ✅ Restored wg (uncommented): $base_pkg"
+            elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
+              echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+              echo "   ✅ Restored wg (added): $base_pkg"
+            fi
+          done < /tmp/wireguard-tools.txt 2>/dev/null || true
+          
           echo "=== Step 8: Enable Simplified Chinese language support ==="
           # Use zh_Hans which is the actual Kconfig symbol (not zh-cn)
           sed -i 's/^# CONFIG_LUCI_LANG_zh_Hans is not set$/CONFIG_LUCI_LANG_zh_Hans=y/' .config
@@ -201,6 +228,24 @@ jobs:
             echo "CONFIG_LUCI_LANG_zh_Hans=y" >> .config
             echo "   ✅ Added CONFIG_LUCI_LANG_zh_Hans=y"
           fi
+          
+          echo "=== Step 8b: Enable custom firmware version ==="
+          sed -i 's/^# CONFIG_VERSIONOPT is not set$/CONFIG_VERSIONOPT=y/' .config
+          if grep -q "^CONFIG_VERSIONOPT=" .config 2>/dev/null; then
+            echo "   ✅ Enabled CONFIG_VERSIONOPT=y"
+          else
+            echo "CONFIG_VERSIONOPT=y" >> .config
+            echo "   ✅ Added CONFIG_VERSIONOPT=y"
+          fi
+          BUILD_DATE_SHORT=$(date +%Y%m%d)
+          BUILD_CODE=$(date +%y.%m.%d)
+          echo "CONFIG_VERSION_DIST=\"Z-ImmortalWrt\"" >> .config
+          echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
+          echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
+          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
+          # 修改 DISTRIB_DESCRIPTION 模板，加入 "by zuoxm | R" 前缀
+          echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
+          echo "   ✅ Modified openwrt_release template: %D %V by zuoxm | R%C"
           
           echo "=== Step 9: Final defconfig to lock in restored packages ==="
           # Use defconfig instead of oldconfig to avoid undoing the restore work

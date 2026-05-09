@@ -239,6 +239,9 @@ jobs:
           fi
           BUILD_DATE_SHORT=$(date +%Y%m%d)
           BUILD_CODE=$(date +%y.%m.%d)
+          sed -i '/^CONFIG_VERSION_DIST=/d' .config
+          sed -i '/^CONFIG_VERSION_NUMBER=/d' .config
+          sed -i '/^CONFIG_VERSION_CODE=/d' .config
           echo "CONFIG_VERSION_DIST=\"Z-ImmortalWrt\"" >> .config
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
@@ -247,15 +250,53 @@ jobs:
           echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
           echo "   ✅ Modified openwrt_release template: %D %V by zuoxm | R%C"
           
+          echo "=== Step 8c: Ensure openssh-server for SFTP (FinalShell file browsing) ==="
+          sed -i 's/^# CONFIG_PACKAGE_openssh-server is not set$/CONFIG_PACKAGE_openssh-server=y/' .config
+          if grep -q "^CONFIG_PACKAGE_openssh-server=" .config 2>/dev/null; then
+            echo "   ✅ Enabled CONFIG_PACKAGE_openssh-server=y (SFTP support for FinalShell)"
+          else
+            echo "CONFIG_PACKAGE_openssh-server=y" >> .config
+            echo "   ✅ Added CONFIG_PACKAGE_openssh-server=y"
+          fi
+          
+          echo "=== Step 8d: Set kucat as default theme via UCI defaults ==="
+          mkdir -p files/etc/uci-defaults
+          cat > files/etc/uci-defaults/99-set-kucat-theme << 'EOF'
+#!/bin/sh
+# Set kucat as default LuCI theme
+uci set luci.main.mediaurlbase='/luci-static/kucat'
+uci commit luci
+EOF
+          chmod +x files/etc/uci-defaults/99-set-kucat-theme
+          echo "   ✅ Created uci-defaults: kucat as default theme"
+          
           echo "=== Step 9: Final defconfig to lock in restored packages ==="
           # Use defconfig instead of oldconfig to avoid undoing the restore work
           make defconfig 2>&1 || true
+          
+          echo "=== Step 9b: Re-apply version config after defconfig (defconfig may reset it) ==="
+          sed -i 's/^# CONFIG_VERSIONOPT is not set$/CONFIG_VERSIONOPT=y/' .config
+          if ! grep -q "^CONFIG_VERSIONOPT=" .config 2>/dev/null; then
+            echo "CONFIG_VERSIONOPT=y" >> .config
+          fi
+          sed -i '/^CONFIG_VERSION_DIST=/d' .config
+          sed -i '/^CONFIG_VERSION_NUMBER=/d' .config
+          sed -i '/^CONFIG_VERSION_CODE=/d' .config
+          echo "CONFIG_VERSION_DIST=\"Z-ImmortalWrt\"" >> .config
+          echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
+          echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
+          echo "   ✅ Version config re-applied after defconfig"
+          # 同样确保 openwrt_release 在编译后重新写入
+          echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
+          echo "   ✅ openwrt_release template re-set"
           
           echo "=== Step 10: Verify .config ==="
           echo "   LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
           echo "   Theme packages after restore: $(grep -c '^CONFIG_PACKAGE_luci-theme' .config)"
           echo "   zsh package: $(grep '^CONFIG_PACKAGE_zsh=' .config || echo 'NOT FOUND')"
           echo "   Chinese lang: $(grep '^CONFIG_LUCI_LANG_zh_Hans=' .config || echo 'NOT FOUND')"
+          echo "   CONFIG_VERSIONOPT: $(grep '^CONFIG_VERSIONOPT=' .config || echo 'NOT SET')"
+          echo "   openssh-server: $(grep '^CONFIG_PACKAGE_openssh-server=' .config || echo 'NOT SET')"
 
       - name: Prepare config
         run: |

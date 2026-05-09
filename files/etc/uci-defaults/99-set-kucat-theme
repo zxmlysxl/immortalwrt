@@ -1,0 +1,4 @@
+#!/bin/sh
+# Set kucat as default LuCI theme
+uci set luci.main.mediaurlbase='/luci-static/kucat'
+uci commit luci

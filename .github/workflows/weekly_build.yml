@@ -250,7 +250,7 @@ jobs:
           echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
           echo "   ✅ Modified openwrt_release template: %D %V by zuoxm | R%C"
           
-          echo "=== Step 8c: Ensure openssh-server for SFTP (FinalShell file browsing) ==="
+          echo "=== Step 8c: Enable openssh-server and dependencies for SFTP/PAM ==="
           sed -i 's/^# CONFIG_PACKAGE_openssh-server is not set$/CONFIG_PACKAGE_openssh-server=y/' .config
           if grep -q "^CONFIG_PACKAGE_openssh-server=" .config 2>/dev/null; then
             echo "   ✅ Enabled CONFIG_PACKAGE_openssh-server=y (SFTP support for FinalShell)"
@@ -258,6 +258,16 @@ jobs:
             echo "CONFIG_PACKAGE_openssh-server=y" >> .config
             echo "   ✅ Added CONFIG_PACKAGE_openssh-server=y"
           fi
+          # shadow-utils provides 'passwd' command and shadow password support (shadow绥.COM)
+          sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
+          if grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then
+            echo "   ✅ Enabled CONFIG_PACKAGE_shadow-utils=y (shadow password support)"
+          else
+            echo "CONFIG_PACKAGE_shadow-utils=y" >> .config
+            echo "   ✅ Added CONFIG_PACKAGE_shadow-utils=y"
+          fi
+          echo "   openssh-server: $(grep '^CONFIG_PACKAGE_openssh-server=' .config || echo 'NOT SET')"
+          echo "   shadow-utils: $(grep '^CONFIG_PACKAGE_shadow-utils=' .config || echo 'NOT SET')"
           
           echo "=== Step 8d: Set kucat as default theme via UCI defaults ==="
           printf '#!/bin/sh\nuci set luci.main.mediaurlbase=/luci-static/kucat\nuci commit luci\n' > files/etc/uci-defaults/99-set-kucat-theme

@@ -274,6 +274,12 @@ jobs:
           chmod +x files/etc/uci-defaults/99-set-kucat-theme
           echo "   ✅ Created uci-defaults: kucat as default theme"
           
+          echo "=== Step 8e: Configure SSH for password auth ==="
+          mkdir -p files/etc/ssh/sshd_config.d
+          printf 'Port 22\nHostKey /etc/ssh/ssh_host_rsa_key\nHostKey /etc/ssh/ssh_host_ed25519_key\nPasswordAuthentication yes\nUsePAM no\nPermitRootLogin yes\nAuthorizedKeysFile .ssh/authorized_keys\nPermitEmptyPasswords no\nPubkeyAuthentication yes\nSubsystem sftp /usr/lib/sftp-server\n' > files/etc/ssh/sshd_config
+          printf 'PasswordAuthentication yes\n' > files/etc/ssh/sshd_config.d/zz-password-auth.conf
+          echo "   ✅ SSH config: PasswordAuthentication yes, UsePAM no"
+          
           echo "=== Step 9: Final defconfig to lock in restored packages ==="
           # Use defconfig instead of oldconfig to avoid undoing the restore work
           make defconfig 2>&1 || true
@@ -293,6 +299,12 @@ jobs:
           # 同样确保 openwrt_release 在编译后重新写入
           echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
           echo "   ✅ openwrt_release template re-set"
+          sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
+          if ! grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then
+            echo "CONFIG_PACKAGE_shadow-utils=y" >> .config
+          fi
+          echo "   ✅ shadow-utils re-applied after defconfig"
+          echo "   ✅ SSH config injected via files/etc/ssh/"
           
           echo "=== Step 10: Verify .config ==="
           echo "   LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"

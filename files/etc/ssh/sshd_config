@@ -1,0 +1,28 @@
+# SSH server configuration for Z-ImmortalWrt
+# This file overrides /usr/share/openssh/sshd_config
+
+Port 22
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Password authentication - ENABLED
+PasswordAuthentication yes
+
+# PAM is not supported in this build
+UsePAM no
+
+# Permit root login
+PermitRootLogin yes
+
+# Authorized keys
+AuthorizedKeysFile .ssh/authorized_keys
+
+# SFTP subsystem
+Subsystem sftp /usr/lib/sftp-server
+
+# Security hardening
+PermitEmptyPasswords no
+PubkeyAuthentication yes
+MaxAuthTries 3
+ClientAliveInterval 300
+ClientAliveCountMax 3

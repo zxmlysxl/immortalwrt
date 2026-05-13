@@ -18,7 +18,7 @@ PermitRootLogin yes
 AuthorizedKeysFile .ssh/authorized_keys
 
 # SFTP subsystem
-Subsystem sftp /usr/lib/sftp-server
+Subsystem sftp /usr/lib/openssh/sftp-server
 
 # Security hardening
 PermitEmptyPasswords no

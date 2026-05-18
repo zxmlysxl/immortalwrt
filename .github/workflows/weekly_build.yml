@@ -38,6 +38,9 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
+          git config --global init.defaultBranch master
+          git config --global pull.rebase false
+
       - name: Sync upstream
         run: |
           echo "=== 添加上游仓库 ==="
@@ -45,32 +48,32 @@ jobs:
           git remote -v
           
           echo "=== 获取上游最新代码 ==="
-          git fetch upstream master --tags
+          # Fetch with tags to get full history for merge-base calculation
+          git fetch upstream master --tags --depth=1000
           
           echo "=== 检查本地与上游的差异 ==="
-          LOCAL=$(git rev-parse @)
+          LOCAL=$(git rev-parse HEAD)
           UPSTREAM=$(git rev-parse upstream/master)
-          BASE=$(git merge-base @ upstream/master)
           
           if [ "$LOCAL" = "$UPSTREAM" ]; then
             echo "✅ 本地已是最新，无需同步"
           else
             echo "📦 检测到上游有更新，准备同步..."
-            echo "   本地: $(git log -1 --format='%H %s' @)"
+            echo "   本地: $(git log -1 --format='%H %s' HEAD)"
             echo "   上游: $(git log -1 --format='%H %s' upstream/master)"
             
             echo "=== 备份本地配置 ==="
             cp .config .config.local
             
-            echo "=== 合并上游更新（recursive theirs策略，自动解决冲突） ==="
-            git config --local merge.rename true
-            git config --local merge.tool "ull"
+            echo "=== 合并上游更新（recursive theirs策略） ==="
             # 使用 theirs 策略，保留上游的修改（config文件以本地为主）
-            git merge -s recursive -X theirs upstream/master --no-edit || {
+            if git merge -s recursive -X theirs upstream/master --no-edit 2>&1; then
+              echo "✅ 合并成功"
+            else
               echo "⚠️ 合并冲突，使用本地配置..."
               git merge --abort 2>/dev/null || true
               git checkout --ours .config 2>/dev/null || true
-            }
+            fi
             
             echo "=== 恢复本地 .config ==="
             cp .config.local .config

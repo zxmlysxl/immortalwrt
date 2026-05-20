@@ -524,7 +524,7 @@ jobs:
             done
           done
           
-          PKG_COUNT=$(ls "$PKG_DIR"/*.apk "$PKG_DIR"/*.ipk 2>/dev/null | wc -l)
+          PKG_COUNT=$(find "$PKG_DIR" \( -name "*.apk" -o -name "*.ipk" \) -type f 2>/dev/null | wc -l)
           
           if [ "$PKG_COUNT" -eq 0 ]; then
             echo "⚠️ 没有找到插件包"
@@ -544,7 +544,7 @@ jobs:
           fi
           
           # 创建 release 并上传所有插件包
-          PKG_FILES=$(ls *.apk *.ipk 2>/dev/null)
+          PKG_FILES=$(find . -maxdepth 1 \( -name "*.apk" -o -name "*.ipk" \) -type f -printf '%f ' 2>/dev/null)
           if [ -n "$PKG_FILES" ]; then
             gh release create "$PKG_TAG" \
               --repo zxmlysxl/zxm_immortalwrt_packages \

@@ -511,16 +511,10 @@ jobs:
           PKG_DIR="packages_upload"
           mkdir -p "$PKG_DIR"
           
-          # 收集所有 .apk 和 .ipk 插件包
+          # 收集所有 .apk 和 .ipk 插件包（跳过基础系统包）
           for dir in bin/packages bin/targets; do
             find "$dir" \( -name "*.apk" -o -name "*.ipk" \) -type f 2>/dev/null | while read f; do
-              # 跳过固件镜像相关文件
-              case "$(basename "$f")" in
-                kernel-*|base-files-*|libc-*|libgcc-*|dnsmasq-*|dropbear-*|firewall-*|wpad-*|luci-ssl-*)
-                  continue ;;
-              esac
               cp "$f" "$PKG_DIR/"
-              echo "   📦 $(basename $f)"
             done
           done
           
@@ -534,6 +528,15 @@ jobs:
           echo "✅ 共收集 $PKG_COUNT 个插件包"
           echo "   总大小: $(du -sh "$PKG_DIR" | cut -f1)"
           
+          # 打包成单个 tar.gz 文件分批上传，避免 GitHub API 限流
+          echo "=== 打包插件包 ==="
+          cd "$PKG_DIR"
+          ARCHIVE="zxm_packages_v${{ steps.rename.outputs.date }}.tar.gz"
+          tar czf "$ARCHIVE" *.apk *.ipk 2>/dev/null
+          echo "   📦 $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
+          ls *.md 2>/dev/null && rm -f *.md
+          ls *.sha256 2>/dev/null && rm -f *.sha256
+          
           echo "=== 发布到 zxm_immortalwrt_packages ==="
           cd "$PKG_DIR"
           
@@ -543,15 +546,15 @@ jobs:
             exit 0
           fi
           
-          # 创建 release 并上传所有插件包
-          PKG_FILES=$(find . -maxdepth 1 \( -name "*.apk" -o -name "*.ipk" \) -type f -printf '%f ' 2>/dev/null)
-          if [ -n "$PKG_FILES" ]; then
+          # 创建 release 并上传插件包压缩包
+          if [ -f "$ARCHIVE" ]; then
             gh release create "$PKG_TAG" \
               --repo zxmlysxl/zxm_immortalwrt_packages \
               --title "Z-Packages v${{ steps.rename.outputs.date }}" \
-              --notes "Build from immortalwrt ${{ steps.rename.outputs.date }}" \
-              $PKG_FILES
-            echo "✅ 插件已发布到 zxm_immortalwrt_packages: $PKG_TAG ($(echo "$PKG_FILES" | wc -w) 个文件)"
+              --notes "Build from immortalwrt ${{ steps.rename.outputs.date }}
+    $PKG_COUNT packages, $(du -h "$ARCHIVE" | cut -f1) compressed" \
+              "$ARCHIVE"
+            echo "✅ 插件包已发布到 zxm_immortalwrt_packages: $PKG_TAG"
           else
             echo "⚠️ 没有找到 .apk 或 .ipk 文件可上传"
           fi

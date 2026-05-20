@@ -360,18 +360,28 @@ jobs:
           
           echo "=== Step 11: Final cleanup - remove problematic packages ==="
           # 这些包有递归依赖或编译问题，每次都清理一遍
-          for pkg in openvswitch ovsd mihomo-alpha shadowsocksr-libev; do
+          # 显式标记为“不启用”，防止后续 make 重新添加
+          for pkg in openvswitch ovsd mihomo-alpha; do
             sed -i "/^CONFIG_PACKAGE_.*${pkg}/d" .config
             echo "   🧹 Removed: $pkg"
           done
-          # 禁用 passwall2 中依赖这些包的 include 选项
+          
+          # shadowsocksr-libev：先删配置行，再显式标记为不启用
+          for pkg in shadowsocksr-libev-ssr-local shadowsocksr-libev-ssr-redir shadowsocksr-libev-ssr-server shadowsocksr-libev-ssr-check shadowsocksr-libev-ssr-nat; do
+            sed -i "/CONFIG_PACKAGE_${pkg}/d" .config
+            echo "# CONFIG_PACKAGE_${pkg} is not set" >> .config
+          done
+          
+          # 禁用 passwall2 中依赖 shadowsocksr 的 include 选项
           sed -i '/INCLUDE_ShadowsocksR_Libev_Client/d' .config
+          echo '# CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_ShadowsocksR_Libev_Client is not set' >> .config
           sed -i '/INCLUDE_Shadowsocks_Libev_Client/d' .config
-          echo "   🧹 Removed: passwall2 shadowsocksr/libev includes"
+          echo '# CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_Shadowsocks_Libev_Client is not set' >> .config
+          echo "   🧹 Disabled: passwall2 shadowsocksr/libev includes"
           
           # 重新运行 oldconfig 使配置同步
           make oldconfig < /dev/null 2>&1 | tail -5 || true
-          echo "   ✅ Config cleaned"
+          echo "   ✅ Final config cleaned"
 
       - name: Prepare config
         run: |

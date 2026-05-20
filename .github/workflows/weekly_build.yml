@@ -357,6 +357,21 @@ jobs:
           echo "   Chinese lang: $(grep '^CONFIG_LUCI_LANG_zh_Hans=' .config || echo 'NOT FOUND')"
           echo "   CONFIG_VERSIONOPT: $(grep '^CONFIG_VERSIONOPT=' .config || echo 'NOT SET')"
           echo "   openssh-server: $(grep '^CONFIG_PACKAGE_openssh-server=' .config || echo 'NOT SET')"
+          
+          echo "=== Step 11: Final cleanup - remove problematic packages ==="
+          # 这些包有递归依赖或编译问题，每次都清理一遍
+          for pkg in openvswitch ovsd mihomo-alpha shadowsocksr-libev; do
+            sed -i "/^CONFIG_PACKAGE_.*${pkg}/d" .config
+            echo "   🧹 Removed: $pkg"
+          done
+          # 禁用 passwall2 中依赖这些包的 include 选项
+          sed -i '/INCLUDE_ShadowsocksR_Libev_Client/d' .config
+          sed -i '/INCLUDE_Shadowsocks_Libev_Client/d' .config
+          echo "   🧹 Removed: passwall2 shadowsocksr/libev includes"
+          
+          # 重新运行 oldconfig 使配置同步
+          make oldconfig < /dev/null 2>&1 | tail -5 || true
+          echo "   ✅ Config cleaned"
 
       - name: Prepare config
         run: |

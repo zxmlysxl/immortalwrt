@@ -432,10 +432,26 @@ jobs:
           echo "=== 检查编译产物 ==="
           find bin -type f -name "*.img*" 2>/dev/null || echo "No img files"
           
-          # 优先选择 ext4-combined-efi 文件
+          # 优先选择 ext4-combined-efi 文件（之前版本）
           SOURCE_FILE=$(find bin/targets -type f -name "*ext4-combined-efi.img.gz" 2>/dev/null | head -1)
           
-          # 如果没有 ext4 文件，再尝试其他格式
+          # 如果没有 ext4，尝试 squashfs-combined-efi（上游更新后默认格式）
+          if [ -z "$SOURCE_FILE" ]; then
+            SOURCE_FILE=$(find bin/targets -type f -name "*squashfs-combined-efi.img.gz" 2>/dev/null | head -1)
+            if [ -n "$SOURCE_FILE" ]; then
+              echo "   📝 使用 squashfs 格式（上游默认）"
+            fi
+          fi
+          
+          # 如果都没有，尝试 targz-combined-efi
+          if [ -z "$SOURCE_FILE" ]; then
+            SOURCE_FILE=$(find bin/targets -type f -name "*targz-combined-efi.img.gz" 2>/dev/null | head -1)
+            if [ -n "$SOURCE_FILE" ]; then
+              echo "   📝 使用 targz 格式（备用）"
+            fi
+          fi
+          
+          # 最后兜底：找任何 .img.gz 文件（排除 rootfs）
           if [ -z "$SOURCE_FILE" ]; then
             SOURCE_FILE=$(find bin/targets -type f \( -name "*.img.gz" -o -name "*.img" -o -name "*.vmdk" \) 2>/dev/null | grep -v rootfs | head -1)
           fi

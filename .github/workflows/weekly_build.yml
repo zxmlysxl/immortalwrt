@@ -551,8 +551,7 @@ jobs:
             gh release create "$PKG_TAG" \
               --repo zxmlysxl/zxm_immortalwrt_packages \
               --title "Z-Packages v${{ steps.rename.outputs.date }}" \
-              --notes "Build from immortalwrt ${{ steps.rename.outputs.date }}
-    $PKG_COUNT packages, $(du -h "$ARCHIVE" | cut -f1) compressed" \
+              --notes "Build from immortalwrt ${{ steps.rename.outputs.date }} | $PKG_COUNT packages" \
               "$ARCHIVE"
             echo "✅ 插件包已发布到 zxm_immortalwrt_packages: $PKG_TAG"
           else

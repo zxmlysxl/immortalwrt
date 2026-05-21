@@ -533,10 +533,14 @@ jobs:
           cd "$PKG_DIR"
           ARCHIVE="zxm_packages_v${{ steps.rename.outputs.date }}.tar.gz"
           # 使用 find 传文件列表给 tar，避免 glob 在文件过多时出错
-          find . -maxdepth 1 \( -name "*.apk" -o -name "*.ipk" \) -type f -print0 | tar czf "$ARCHIVE" --null -T -
-          echo "   📦 $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
-          ls *.md 2>/dev/null && rm -f *.md
-          ls *.sha256 2>/dev/null && rm -f *.sha256
+          find . -maxdepth 1 \( -name "*.apk" -o -name "*.ipk" \) -type f -print0 | tar czf "$ARCHIVE" --null -T - 2>/dev/null || true
+          if [ -f "$ARCHIVE" ]; then
+            echo "   📦 $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
+          else
+            echo "⚠️ 打包失败"
+          fi
+          # 清理不需要的文件（忽略空 glob 的错误）
+          rm -f *.md *.sha256 2>/dev/null || true
           
           echo "=== 发布到 zxm_immortalwrt_packages ==="
           cd "$PKG_DIR"

@@ -543,7 +543,6 @@ jobs:
           rm -f *.md *.sha256 2>/dev/null || true
           
           echo "=== 发布到 zxm_immortalwrt_packages ==="
-          cd "$PKG_DIR"
           
           # 检查是否已存在相同 tag
           if gh release view "$PKG_TAG" --repo zxmlysxl/zxm_immortalwrt_packages &>/dev/null; then

@@ -532,7 +532,8 @@ jobs:
           echo "=== 打包插件包 ==="
           cd "$PKG_DIR"
           ARCHIVE="zxm_packages_v${{ steps.rename.outputs.date }}.tar.gz"
-          tar czf "$ARCHIVE" *.apk *.ipk 2>/dev/null
+          # 使用 find 传文件列表给 tar，避免 glob 在文件过多时出错
+          find . -maxdepth 1 \( -name "*.apk" -o -name "*.ipk" \) -type f -print0 | tar czf "$ARCHIVE" --null -T -
           echo "   📦 $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
           ls *.md 2>/dev/null && rm -f *.md
           ls *.sha256 2>/dev/null && rm -f *.sha256

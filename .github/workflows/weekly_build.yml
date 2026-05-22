@@ -528,21 +528,9 @@ jobs:
           echo "✅ 共收集 $PKG_COUNT 个插件包"
           echo "   总大小: $(du -sh "$PKG_DIR" | cut -f1)"
           
-          # 打包成单个 tar.gz 文件分批上传，避免 GitHub API 限流
-          echo "=== 打包插件包 ==="
-          cd "$PKG_DIR"
-          ARCHIVE="zxm_packages_v${{ steps.rename.outputs.date }}.tar.gz"
-          # 使用 find 传文件列表给 tar，避免 glob 在文件过多时出错
-          find . -maxdepth 1 \( -name "*.apk" -o -name "*.ipk" \) -type f -print0 | tar czf "$ARCHIVE" --null -T - 2>/dev/null || true
-          if [ -f "$ARCHIVE" ]; then
-            echo "   📦 $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
-          else
-            echo "⚠️ 打包失败"
-          fi
-          # 清理不需要的文件（忽略空 glob 的错误）
-          rm -f *.md *.sha256 2>/dev/null || true
-          
+          # 发布到 zxm_immortalwrt_packages
           echo "=== 发布到 zxm_immortalwrt_packages ==="
+          cd "$PKG_DIR"
           
           # 检查是否已存在相同 tag
           if gh release view "$PKG_TAG" --repo zxmlysxl/zxm_immortalwrt_packages &>/dev/null; then
@@ -550,14 +538,22 @@ jobs:
             exit 0
           fi
           
-          # 创建 release 并上传插件包压缩包
-          if [ -f "$ARCHIVE" ]; then
-            gh release create "$PKG_TAG" \
-              --repo zxmlysxl/zxm_immortalwrt_packages \
-              --title "Z-Packages v${{ steps.rename.outputs.date }}" \
-              --notes "Build from immortalwrt ${{ steps.rename.outputs.date }} | $PKG_COUNT packages" \
-              "$ARCHIVE"
-            echo "✅ 插件包已发布到 zxm_immortalwrt_packages: $PKG_TAG"
-          else
+          # 列出所有插件包文件
+          PKG_FILES=$(find . -maxdepth 1 \( -name "*.apk" -o -name "*.ipk" \) -type f 2>/dev/null | sort)
+          PKG_COUNT=$(find . -maxdepth 1 \( -name "*.apk" -o -name "*.ipk" \) -type f 2>/dev/null | wc -l)
+          
+          if [ "$PKG_COUNT" -eq 0 ]; then
             echo "⚠️ 没有找到 .apk 或 .ipk 文件可上传"
+            exit 0
           fi
+          
+          echo "📤 共 $PKG_COUNT 个插件包，共计 $(du -sh . | cut -f1)"
+          
+          # 上传全部文件（不分包压缩）
+          gh release create "$PKG_TAG" \
+            --repo zxmlysxl/zxm_immortalwrt_packages \
+            --title "Z-Packages v${{ steps.rename.outputs.date }}" \
+            --notes "Build from immortalwrt ${{ steps.rename.outputs.date }} | $PKG_COUNT packages" \
+            $PKG_FILES
+          
+          echo "✅ 插件已发布到 zxm_immortalwrt_packages: $PKG_TAG"

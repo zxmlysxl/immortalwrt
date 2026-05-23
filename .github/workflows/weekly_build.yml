@@ -549,18 +549,45 @@ jobs:
           
           echo "📤 共 $PKG_COUNT 个插件包，共计 $(du -sh . | cut -f1)"
           
-          # 打成一个 tar.gz 包，避免 490 个文件逐个上传触发 GitHub 速率限制
-          echo "=== 打包插件为单个 tar.gz ==="
-          ARCHIVE_NAME="Z-Packages-${{ steps.rename.outputs.date }}.tar.gz"
-          tar czf "$ARCHIVE_NAME" $PKG_FILES
-          ARCHIVE_SIZE=$(du -h "$ARCHIVE_NAME" | cut -f1)
-          echo "📦 打包完成：$ARCHIVE_NAME (共 $PKG_COUNT 个包，$ARCHIVE_SIZE)"
-          
-          # 上传单个 tar.gz 文件
+          # 分批上传，避免一次上传490个文件触发 GitHub 二次速率限制
+          echo "=== 创建 Release ==="
           gh release create "$PKG_TAG" \
             --repo zxmlysxl/zxm_immortalwrt_packages \
             --title "Z-Packages v${{ steps.rename.outputs.date }}" \
-            --notes "Build from immortalwrt ${{ steps.rename.outputs.date }} | $PKG_COUNT packages | Downloaded and extracted: tar xzf $ARCHIVE_NAME" \
-            "$ARCHIVE_NAME"
+            --notes "Build from immortalwrt ${{ steps.rename.outputs.date }} | $PKG_COUNT packages"
           
-          echo "✅ 插件已发布到 zxm_immortalwrt_packages: $PKG_TAG"
+          echo "=== 分批上传插件包（每批30个，间隔3秒）==="
+          
+          # 列出所有文件到数组
+          mapfile -t PKG_LIST < <(find . -maxdepth 1 \( -name "*.apk" -o -name "*.ipk" \) -type f 2>/dev/null | sort)
+          TOTAL=${#PKG_LIST[@]}
+          echo "   共 $TOTAL 个文件待上传"
+          
+          BATCH_SIZE=30
+          UPLOADED=0
+          FAILED=0
+          BATCH_NUM=1
+          
+          for ((idx=0; idx<TOTAL; idx+=BATCH_SIZE)); do
+            # 取当前批次
+            BATCH=("${PKG_LIST[@]:idx:BATCH_SIZE}")
+            COUNT=${#BATCH[@]}
+            echo "   ⏫ 第 $BATCH_NUM 批（$COUNT 个文件）"
+            
+            gh release upload "$PKG_TAG" --repo zxmlysxl/zxm_immortalwrt_packages "${BATCH[@]}" 2>&1 || {
+              echo "   ⚠️ 第 $BATCH_NUM 批部分失败，重试一次..."
+              sleep 5
+              gh release upload "$PKG_TAG" --repo zxmlysxl/zxm_immortalwrt_packages "${BATCH[@]}" 2>&1 || FAILED=$((FAILED + 1))
+            }
+            
+            UPLOADED=$((UPLOADED + COUNT))
+            BATCH_NUM=$((BATCH_NUM + 1))
+            echo "   ✅ 进度: $UPLOADED / $TOTAL"
+            
+            if [ $UPLOADED -lt $TOTAL ]; then
+              echo "   😴 等待3秒避免限流..."
+              sleep 3
+            fi
+          done
+          
+          echo "✅ 上传完成：共 $UPLOADED 个插件包到 zxm_immortalwrt_packages: $PKG_TAG"

@@ -507,25 +507,37 @@ jobs:
         run: |
           PKG_TAG="v${{ steps.rename.outputs.date }}"
           
-          echo "=== 收集编译好的插件包 ==="
+          echo "=== 收集编译好的插件包（仅 zxm_immortalwrt_packages 来源）==="
           PKG_DIR="packages_upload"
           mkdir -p "$PKG_DIR"
           
-          # 收集所有 .apk 和 .ipk 插件包（跳过基础系统包）
-          for dir in bin/packages bin/targets; do
+          # 仅收集来自 zxm_immortalwrt_packages feed 的包（feeds/zuoxm/ 下的各子目录）
+          # 这些包的源码目录在 feeds/zuoxm/{subdir}/，通过编译输出文件名可识别来源
+          # 定义来自 zxm_immortalwrt_packages 的包名前缀（不含 feeds 路径前缀）
+          ZXM_PREFIXES="luci-app-adguardhome luci-app-advancedplus luci-app-chatgpt-web luci-app-eqosplus luci-app-kucat-config luci-app-momo luci-app-netdata luci-app-netwizard luci-app-openclash luci-app-ota luci-app-passwall luci-app-passwall2 luci-app-poweroffdevice luci-app-tailscale luci-app-taskplan luci-app-timecontrol luci-app-wechatpush luci-app-wolplus luci-app-wrtbwmon luci-app-znetcontrol luci-theme-kucat luci-lib-taskd luci-lib-xterm taskd bandix easytier lucky momo netspeedtest nikki watchdog wrtbwmon chinadns-ng geoview hysteria ipt2socks microsocks naiveproxy simple-obfs shadowsocks-rust shadow-tls sing-box tcping trojan-plus tuic-client v2ray-plugin xray-plugin xray-core dns2socks"
+          
+          echo "=== 扫描 bin/packages 和 bin/targets 中的 APK/IPK 文件 ==="
+          for dir in bin/packages/x86_64 bin/targets/x86/64; do
             find "$dir" \( -name "*.apk" -o -name "*.ipk" \) -type f 2>/dev/null | while read f; do
-              cp "$f" "$PKG_DIR/"
+              PKG_NAME=$(basename "$f" | sed 's/_[0-9].*//')
+              for prefix in $ZXM_PREFIXES; do
+                if [ "$PKG_NAME" = "$prefix" ]; then
+                  cp "$f" "$PKG_DIR/"
+                  echo "   ✅ $PKG_NAME"
+                  break
+                fi
+              done
             done
           done
           
           PKG_COUNT=$(find "$PKG_DIR" \( -name "*.apk" -o -name "*.ipk" \) -type f 2>/dev/null | wc -l)
           
           if [ "$PKG_COUNT" -eq 0 ]; then
-            echo "⚠️ 没有找到插件包"
+            echo "⚠️ 没有找到来自 zxm_immortalwrt_packages 的插件包"
             exit 0
           fi
           
-          echo "✅ 共收集 $PKG_COUNT 个插件包"
+          echo "✅ 共收集 $PKG_COUNT 个 zxm 插件包"
           echo "   总大小: $(du -sh "$PKG_DIR" | cut -f1)"
           
           # 发布到 zxm_immortalwrt_packages

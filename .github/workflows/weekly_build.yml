@@ -67,7 +67,7 @@ jobs:
             
             echo "=== 合并上游更新（recursive theirs策略） ==="
             # 使用 theirs 策略，保留上游的修改（config文件以本地为主）
-            if git merge -s recursive -X theirs upstream/master --no-edit 2>&1; then
+            if git merge -s recursive -X theirs --allow-unrelated-histories upstream/master --no-edit 2>&1; then
               echo "✅ 合并成功"
             else
               echo "⚠️ 合并冲突，使用本地配置..."
@@ -100,8 +100,7 @@ jobs:
         run: |
           echo "=== 同步上游代码 ==="
           git remote add upstream https://github.com/immortalwrt/immortalwrt.git 2>/dev/null || true
-          git fetch upstream master
-          git merge upstream/master --no-edit
+          git fetch upstream master --tags --depth=2000 && git merge --allow-unrelated-histories upstream/master --no-edit
           echo "✅ 上游同步完成"
 
       - name: Verify files directory

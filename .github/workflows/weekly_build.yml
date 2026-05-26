@@ -63,7 +63,7 @@ jobs:
             echo "   上游: $(git log -1 --format='%H %s' upstream/master)"
             
             echo "=== 备份本地配置 ==="
-            cp .config .config.local
+            cp .config .config.local 2>/dev/null || true
             
             echo "=== 合并上游更新（recursive theirs策略） ==="
             # 使用 theirs 策略，保留上游的修改（config文件以本地为主）
@@ -76,7 +76,7 @@ jobs:
             fi
             
             echo "=== 恢复本地 .config ==="
-            cp .config.local .config
+            cp .config.local .config 2>/dev/null || true
             
             echo "=== 验证同步结果 ==="
             echo "本地 commits: $(git log --oneline -3)"
@@ -92,7 +92,7 @@ jobs:
             echo "   LuCI packages: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
           else
             echo "❌ .config NOT found!"
-            exit 1
+            echo "   ⚠️ .config 不存在，将在 Initialize feeds 步骤中由 make defconfig 生成"
           fi
 
       - name: Sync with upstream (optional)

@@ -21,6 +21,9 @@ on:
         required: false
         default: 'false'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   build:
     name: Build ImmortalWrt x86_64 EFI
@@ -33,6 +36,7 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
+          show-progress: true
 
       - name: Set up git config
         run: |

@@ -21,9 +21,6 @@ on:
         required: false
         default: 'false'
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-
 jobs:
   build:
     name: Build ImmortalWrt x86_64 EFI
@@ -32,7 +29,7 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -495,7 +492,7 @@ jobs:
           echo "date=${DATE}" >> $GITHUB_OUTPUT
 
       - name: Upload to Releases
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: Z-ImmWrt-${{ steps.rename.outputs.date }}
           name: Z-ImmWrt-${{ steps.rename.outputs.date }}

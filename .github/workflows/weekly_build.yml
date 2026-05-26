@@ -62,8 +62,12 @@ jobs:
             echo "   本地: $(git log -1 --format='%H %s' HEAD)"
             echo "   上游: $(git log -1 --format='%H %s' upstream/master)"
             
-            echo "=== 备份本地配置 ==="
+            echo "=== 备份本地配置与自定义文件 ==="
             cp .config .config.local 2>/dev/null || true
+            if [ -d "files" ]; then
+              cp -a files files.local 2>/dev/null || true
+              echo "   ✅ 已备份 files/ 目录"
+            fi
             
             echo "=== 合并上游更新（recursive theirs策略） ==="
             # 使用 theirs 策略，保留上游的修改（config文件以本地为主）
@@ -75,8 +79,14 @@ jobs:
               git checkout --ours .config 2>/dev/null || true
             fi
             
-            echo "=== 恢复本地 .config ==="
+            echo "=== 恢复本地 .config 与自定义文件 ==="
             cp .config.local .config 2>/dev/null || true
+            if [ -d "files.local" ]; then
+              rm -rf files 2>/dev/null
+              cp -a files.local files 2>/dev/null || true
+              rm -rf files.local
+              echo "   ✅ 已恢复 files/ 目录"
+            fi
             
             echo "=== 验证同步结果 ==="
             echo "本地 commits: $(git log --oneline -3)"

@@ -146,17 +146,17 @@ jobs:
           echo "   LuCI packages in original: $(grep -c '^CONFIG_PACKAGE_luci' .config.original)"
           
           echo "=== Step 2: Extract luci-app packages list ==="
-          grep '^CONFIG_PACKAGE_luci-app' .config.original > /tmp/luci-apps.txt
+          grep '^CONFIG_PACKAGE_luci-app' .config.original > /tmp/luci-apps.txt || true
           echo "   Found $(wc -l < /tmp/luci-apps.txt) luci-app packages"
           
           echo "=== Step 2b: Extract theme packages list ==="
-          grep '^CONFIG_PACKAGE_luci-theme' .config.original > /tmp/luci-themes.txt
+          grep '^CONFIG_PACKAGE_luci-theme' .config.original > /tmp/luci-themes.txt || true
           echo "   Found $(wc -l < /tmp/luci-themes.txt) theme packages"
           
           echo "=== Step 2c: Extract zsh package ==="
 
           echo "=== Step 2d: Extract luci-mod packages list ==="
-          grep '^CONFIG_PACKAGE_luci-mod' .config.original > /tmp/luci-mods.txt
+          grep '^CONFIG_PACKAGE_luci-mod' .config.original > /tmp/luci-mods.txt || true
           echo "   Found $(wc -l < /tmp/luci-mods.txt) luci-mod packages"
 
           echo "=== Step 2e: Extract luci-i18n packages list ==="
@@ -613,3 +613,4 @@ jobs:
           done
           
           echo "✅ 上传完成：共 $UPLOADED 个插件包到 zxm_immortalwrt_packages: $PKG_TAG"
+

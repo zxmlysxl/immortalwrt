@@ -389,6 +389,12 @@ jobs:
           echo '# CONFIG_PACKAGE_luci-app-passwall2_INCLUDE_Shadowsocks_Libev_Client is not set' >> .config
           echo "   🧹 Disabled: passwall2 shadowsocksr/libev includes"
           
+          # 删除已被上游移除的内核补丁（否则编译 kernel-headers 会失败）
+          for p in 742-*; do
+            find target/linux -name "$p" -delete 2>/dev/null || true
+          done
+          echo "   🧹 Removed stale kernel patches (742-*)"
+          
           # 重新运行 oldconfig 使配置同步
           make oldconfig < /dev/null 2>&1 | tail -5 || true
           echo "   ✅ Final config cleaned"
@@ -613,4 +619,5 @@ jobs:
           done
           
           echo "✅ 上传完成：共 $UPLOADED 个插件包到 zxm_immortalwrt_packages: $PKG_TAG"
+
 

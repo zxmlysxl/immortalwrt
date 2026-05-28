@@ -17,7 +17,7 @@ import requests
 from bs4 import BeautifulSoup
 
 # 配置
-DATA_DIR = Path("/root/.openclaw/workspace/cloud_prices")
+DATA_DIR = Path("./cloud_prices")
 DATA_DIR.mkdir(exist_ok=True)
 PRICE_FILE = DATA_DIR / "prices.json"
 HISTORY_FILE = DATA_DIR / "history.json"

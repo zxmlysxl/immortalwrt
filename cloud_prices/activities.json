@@ -1,11 +1,11 @@
 {
   "activities": {
     "tencent": {
-      "hash": "87a9503bc7fee18896532ce885d4f572",
+      "hash": "51601139ee2e85bd105fd0cc88ea4b39",
       "url": "https://cloud.tencent.com/act",
       "activities": [
         {
-          "title": "最新活动HOT",
+          "title": "最新活动",
           "provider": "tencent",
           "url": "https://cloud.tencent.com/act"
         },
@@ -40,16 +40,16 @@
           "url": "https://cloud.tencent.com/act/pro/teaStarterExhibition?from=29429&from=29430#2"
         }
       ],
-      "last_check": "2026-03-05T20:00:02.736679"
+      "last_check": "2026-05-29T03:42:05.586616"
     },
     "aliyun": {
-      "hash": "a930b3bc08d9c3e160122908e326daac",
+      "hash": "61b24015e690acf3c907709bfc747c27",
       "url": "https://www.aliyun.com/activity",
       "activities": [],
-      "last_check": "2026-03-05T20:00:04.318389"
+      "last_check": "2026-05-29T03:42:09.114224"
     },
     "huawei": {
-      "hash": "470fad28d001bb770b392d3e74044b1f",
+      "hash": "35592637df9b8e5507aae7b708a57eec",
       "url": "https://activity.huaweicloud.com",
       "activities": [
         {
@@ -61,17 +61,12 @@
           "provider": "huawei"
         }
       ],
-      "last_check": "2026-03-05T20:00:04.472924"
+      "last_check": "2026-05-29T03:42:09.449788"
     },
     "aws": {
-      "hash": "24d74b5582c29e9fd5af07c5867c2780",
+      "hash": "5e58129e76e25c1d6198ed508e624bcd",
       "url": "https://aws.amazon.com/cn/free/",
       "activities": [
-        {
-          "title": "您是否在 2025 年 7 月 16 日之前创建了 AWS 账户？ 访问旧版免费套餐",
-          "provider": "aws",
-          "url": "/cn/free/legacy/?p=free&c=hp2&z=1"
-        },
         {
           "title": "创建免费账户",
           "provider": "aws",
@@ -83,8 +78,8 @@
           "url": "https://portal.aws.amazon.com/gp/aws/developer/registration/index.html?&p=free&c=hp2&z=6"
         }
       ],
-      "last_check": "2026-03-05T20:00:04.773322"
+      "last_check": "2026-05-29T03:42:09.569280"
     }
   },
-  "last_check": "2026-03-05T20:00:04.773354"
+  "last_check": "2026-05-29T03:42:09.569299"
 }

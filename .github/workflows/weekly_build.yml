@@ -395,8 +395,8 @@ jobs:
           done
           echo "   🧹 Removed stale kernel patches (742-*)"
           
-          # 重新运行 oldconfig 使配置同步
-          make oldconfig < /dev/null 2>&1 | tail -5 || true
+          # 重新运行 defconfig 而非 oldconfig，避免 oldconfig 用上游默认值自动禁用已恢复的包
+          make defconfig 2>&1 || true
           echo "   ✅ Final config cleaned"
 
       - name: Prepare config
@@ -439,7 +439,15 @@ jobs:
         run: |
           echo "=== 检查编译产物 ==="
           find bin/targets -name "*.img.gz" -ls 2>/dev/null || echo "No img.gz found"
-          find bin/targets -name "*.manifest" -exec cat {} \; 2>/dev/null | grep -c "luci-app" || echo "0 luci-app in manifest"
+          LUCI_COUNT=$(find bin/targets -name "*.manifest" -exec cat {} \; 2>/dev/null | grep -c "luci-app" || echo "0")
+          echo "LuCI packages in manifest: $LUCI_COUNT"
+          if [ "$LUCI_COUNT" -eq 0 ]; then
+            echo "❌ 严重错误：固件中没有 LuCI 插件！"
+            echo "   manifest 文件内容："
+            find bin/targets -name "*.manifest" -exec head -30 {} \; 2>/dev/null
+            exit 1
+          fi
+          echo "✅ 固件包含 $LUCI_COUNT 个 LuCI 插件"
           ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
 
       - name: Rename and package firmware

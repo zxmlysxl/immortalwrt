@@ -183,6 +183,15 @@ jobs:
           echo "=== Step 5: Install feeds ==="
           ./scripts/feeds install -a -f || true
           
+          echo "=== Step 5b: Verify feeds installation ==="
+          FEEDS_COUNT=$(find package/feeds -maxdepth 2 -type d -name "luci-app-*" 2>/dev/null | wc -l)
+          echo "   Feeds luci-app directories: $FEEDS_COUNT"
+          if [ "$FEEDS_COUNT" -lt 5 ]; then
+            echo "⚠️ Warning: Only $FEEDS_COUNT luci-app feeds found (expected more)"
+            echo "   Available feeds:"
+            ls -la package/feeds/ 2>/dev/null || echo "   package/feeds/ not found"
+          fi
+          
           echo "=== Step 6: Sync with oldconfig ==="
           make oldconfig < /dev/null || true
           
@@ -439,15 +448,21 @@ jobs:
         run: |
           echo "=== 检查编译产物 ==="
           find bin/targets -name "*.img.gz" -ls 2>/dev/null || echo "No img.gz found"
-          LUCI_COUNT=$(find bin/targets -name "*.manifest" -exec cat {} \; 2>/dev/null | grep -c "luci-app" || echo "0")
-          echo "LuCI packages in manifest: $LUCI_COUNT"
-          if [ "$LUCI_COUNT" -eq 0 ]; then
-            echo "❌ 严重错误：固件中没有 LuCI 插件！"
-            echo "   manifest 文件内容："
-            find bin/targets -name "*.manifest" -exec head -30 {} \; 2>/dev/null
+          MANIFEST_FILES=$(find bin/targets -name "*.manifest" 2>/dev/null)
+          if [ -z "$MANIFEST_FILES" ]; then
+            echo "❌ 未找到 manifest 文件"
             exit 1
           fi
-          echo "✅ 固件包含 $LUCI_COUNT 个 LuCI 插件"
+          # Use grep | wc -l to get total count across all manifests (safer than grep -c with multi-line output)
+          TOTAL_LUCI=$(cat $MANIFEST_FILES 2>/dev/null | grep -c "luci-app" || echo "0")
+          echo "LuCI packages in manifest: $TOTAL_LUCI"
+          if [ "$TOTAL_LUCI" -eq 0 ]; then
+            echo "❌ 严重错误：固件中没有 LuCI 插件！"
+            echo "   manifest 文件内容（前30行）："
+            cat $MANIFEST_FILES 2>/dev/null | head -30
+            exit 1
+          fi
+          echo "✅ 固件包含 $TOTAL_LUCI 个 LuCI 插件"
           ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
 
       - name: Rename and package firmware

@@ -408,9 +408,7 @@ jobs:
           done
           echo "   🧹 Removed stale kernel patches (742-*)"
           
-          # 重新运行 defconfig 而非 oldconfig，避免 oldconfig 用上游默认值自动禁用已恢复的包
-          make defconfig 2>&1 || true
-          echo "   ✅ Final config cleaned"
+          echo "   ✅ Config ready — no additional defconfig to avoid overwriting restored packages"
 
       - name: Prepare config
         run: |

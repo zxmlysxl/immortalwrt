@@ -192,9 +192,6 @@ jobs:
             ls -la package/feeds/ 2>/dev/null || echo "   package/feeds/ not found"
           fi
           
-          echo "=== Step 6: Sync with oldconfig ==="
-          make oldconfig < /dev/null || true
-          
           echo "=== Step 7: Restore luci-app packages ==="
           # Restore luci-app packages: handle both # is not set AND completely missing lines
           while IFS= read -r pkg; do
@@ -376,6 +373,13 @@ jobs:
           echo "   Chinese lang: $(grep '^CONFIG_LUCI_LANG_zh_Hans=' .config || echo 'NOT FOUND')"
           echo "   CONFIG_VERSIONOPT: $(grep '^CONFIG_VERSIONOPT=' .config || echo 'NOT SET')"
           echo "   openssh-server: $(grep '^CONFIG_PACKAGE_openssh-server=' .config || echo 'NOT SET')"
+          
+          echo "=== Step 10.5: Resolve dependencies for restored packages (AFTER all restores) ==="
+          # 在所有 restore 完成后调用 oldconfig，此时 .config 已有 luci-app=y 等条目
+          # oldconfig 会为这些显式启用的包添加必要的依赖（如 libjson-c、libubus 等）
+          # 不会像旧流程那样在 restore 之前调用 oldconfig（会导致包被上游默认值清除）
+          make oldconfig < /dev/null 2>&1 | tail -10 || true
+          echo "   ✅ Dependencies resolved"
           
           echo "=== Step 11: Final cleanup - remove problematic packages ==="
           # 这些包有递归依赖或编译问题，每次都清理一遍

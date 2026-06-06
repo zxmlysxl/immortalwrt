@@ -1,7 +1,7 @@
 {
   "activities": {
     "tencent": {
-      "hash": "86d661c7890faa3940597cb0a06fcf48",
+      "hash": "d30753ef4f92a8c1d06846c8f5483fba",
       "url": "https://cloud.tencent.com/act",
       "activities": [
         {
@@ -40,13 +40,13 @@
           "url": "https://cloud.tencent.com/act/pro/teaStarterExhibition?from=29429&from=29430#2"
         }
       ],
-      "last_check": "2026-06-06T03:35:17.201694"
+      "last_check": "2026-06-06T13:56:38.134402"
     },
     "aliyun": {
       "hash": "8029d54fb2dca4245d31af2f130792ee",
       "url": "https://www.aliyun.com/activity",
       "activities": [],
-      "last_check": "2026-06-06T03:35:20.515486"
+      "last_check": "2026-06-06T13:56:40.153198"
     },
     "huawei": {
       "hash": "6622a750c1a227a9b4f07b8bb3887fd1",
@@ -61,10 +61,10 @@
           "provider": "huawei"
         }
       ],
-      "last_check": "2026-06-06T03:35:20.738875"
+      "last_check": "2026-06-06T13:56:40.481140"
     },
     "aws": {
-      "hash": "da60f203fc50f78b1cd5764d13bed629",
+      "hash": "44195fbb05940879700ca73562a2ee03",
       "url": "https://aws.amazon.com/cn/free/",
       "activities": [
         {
@@ -78,8 +78,8 @@
           "url": "https://portal.aws.amazon.com/gp/aws/developer/registration/index.html?&p=free&c=hp2&z=6"
         }
       ],
-      "last_check": "2026-06-06T03:35:20.912481"
+      "last_check": "2026-06-06T13:56:40.644478"
     }
   },
-  "last_check": "2026-06-06T03:35:20.912496"
+  "last_check": "2026-06-06T13:56:40.644491"
 }

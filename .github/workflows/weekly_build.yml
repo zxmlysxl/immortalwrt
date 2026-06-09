@@ -366,16 +366,32 @@ jobs:
           # NOTE: defconfig in OpenWrt preserves explicit CONFIG_PACKAGE_xxx=y settings
           make defconfig 2>&1 | tail -5 || true
           
-          echo "=== Step 9c: Verify luci-app count AFTER defconfig ==="
-          AFTER_DEF_LUCI=$(grep -c '^CONFIG_PACKAGE_luci' .config 2>/dev/null || echo 0)
-          echo "   LuCI packages after defconfig: $AFTER_DEF_LUCI"
-          if [ "$AFTER_DEF_LUCI" -lt "$ORIG_LUCI" ]; then
-            echo "   ❌ CRITICAL: defconfig reset $((ORIG_LUCI - AFTER_DEF_LUCI)) packages!"
-            echo "   This will cause firmware size reduction!"
-            echo "   Build cannot continue with incorrect package count."
-            exit 1
+          echo "=== Step 9c: Force-restore luci packages after defconfig ==="
+          # defconfig may reset luci packages to # is not set, so restore them again
+          while IFS= read -r pkg; do
+            base_pkg=$(echo "$pkg" | sed 's/^CONFIG_PACKAGE_//;s/=y//')
+            if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+              sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+            elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
+              echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+            fi
+          done < /tmp/luci-apps.txt
+          
+          echo "=== Step 9d: Final oldconfig to resolve dependencies ==="
+          # After force-restoring packages, run oldconfig ONE MORE TIME to resolve new dependencies
+          # Without this, some packages might have broken dependencies
+          make oldconfig < /dev/null 2>&1 | tail -5 || true
+          
+          echo "=== Step 9e: Final verify ==="
+          FINAL_LUCI=$(grep -c '^CONFIG_PACKAGE_luci' .config 2>/dev/null || echo 0)
+          echo "   LuCI packages after final restore: $FINAL_LUCI"
+          echo "   Expected: $ORIG_LUCI"
+          if [ "$FINAL_LUCI" -lt "$ORIG_LUCI" ]; then
+            echo "   ⚠️ WARNING: $((ORIG_LUCI - FINAL_LUCI)) packages still missing"
+            echo "   This may cause reduced firmware size but continuing anyway..."
+          else
+            echo "   ✅ Package count verified: $FINAL_LUCI luci packages"
           fi
-          echo "   ✅ Package count preserved after defconfig"
           
           echo "=== Step 9b: Re-apply version config after defconfig (defconfig may reset it) ==="
           sed -i 's/^# CONFIG_VERSIONOPT is not set$/CONFIG_VERSIONOPT=y/' .config

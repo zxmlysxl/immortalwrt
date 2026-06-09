@@ -340,9 +340,42 @@ jobs:
           printf 'PasswordAuthentication yes\n' > files/etc/ssh/sshd_config.d/zz-password-auth.conf
           echo "   ✅ SSH config: PasswordAuthentication yes, UsePAM no"
           
-          echo "=== Step 9: Final defconfig to lock in restored packages ==="
-          # Use defconfig instead of oldconfig to avoid undoing the restore work
-          make defconfig 2>&1 || true
+          echo "=== Step 9: Final check of luci-app count BEFORE compilation ==="
+          ORIG_LUCI=$(grep -c '^CONFIG_PACKAGE_luci' .config.original 2>/dev/null || echo 0)
+          CURRENT_LUCI=$(grep -c '^CONFIG_PACKAGE_luci' .config 2>/dev/null || echo 0)
+          echo "   .config.original has $ORIG_LUCI luci packages"
+          echo "   Current .config has $CURRENT_LUCI luci packages"
+          if [ "$CURRENT_LUCI" -lt "$ORIG_LUCI" ]; then
+            echo "   ❌ Package count mismatch! Expected $ORIG_LUCI but got $CURRENT_LUCI"
+            echo "   Missing packages will cause firmware size to be reduced!"
+            echo "   Listing missing packages:"
+            grep '^CONFIG_PACKAGE_luci' .config.original | while read pkg; do
+              base=$(echo "$pkg" | sed 's/^CONFIG_PACKAGE_//;s/=y//')
+              if ! grep -q "^CONFIG_PACKAGE_${base}=" .config 2>/dev/null; then
+                echo "   MISSING: $base"
+              fi
+            done
+            echo ""
+            echo "   Build cannot continue with incorrect package count."
+            exit 1
+          else
+            echo "   ✅ Package count verified: $CURRENT_LUCI luci packages"
+          
+          echo "=== Step 9b: Final defconfig ==="
+          # Final defconfig to ensure config is valid for compilation
+          # NOTE: defconfig in OpenWrt preserves explicit CONFIG_PACKAGE_xxx=y settings
+          make defconfig 2>&1 | tail -5 || true
+          
+          echo "=== Step 9c: Verify luci-app count AFTER defconfig ==="
+          AFTER_DEF_LUCI=$(grep -c '^CONFIG_PACKAGE_luci' .config 2>/dev/null || echo 0)
+          echo "   LuCI packages after defconfig: $AFTER_DEF_LUCI"
+          if [ "$AFTER_DEF_LUCI" -lt "$ORIG_LUCI" ]; then
+            echo "   ❌ CRITICAL: defconfig reset $((ORIG_LUCI - AFTER_DEF_LUCI)) packages!"
+            echo "   This will cause firmware size reduction!"
+            echo "   Build cannot continue with incorrect package count."
+            exit 1
+          fi
+          echo "   ✅ Package count preserved after defconfig"
           
           echo "=== Step 9b: Re-apply version config after defconfig (defconfig may reset it) ==="
           sed -i 's/^# CONFIG_VERSIONOPT is not set$/CONFIG_VERSIONOPT=y/' .config
@@ -365,6 +398,7 @@ jobs:
           fi
           echo "   ✅ shadow-utils re-applied after defconfig"
           echo "   ✅ SSH config injected via files/etc/ssh/"
+          fi
           
           echo "=== Step 10: Verify .config ==="
           echo "   LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"

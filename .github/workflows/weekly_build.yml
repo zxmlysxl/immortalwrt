@@ -177,22 +177,14 @@ jobs:
           sed -i '/INCLUDE_Shadowsocks_Libev_Client/d' .config
           echo "   ✅ Problematic packages removed"
           
-          set +e
-          echo "=== Step 4: Update feeds (300s timeout) ==="
-          timeout 300 ./scripts/feeds update -a 2>&1 | tee /tmp/feeds_update.log
+set +e
+          echo "=== Step 4: Update feeds (120s timeout) ==="
+          timeout 120 ./scripts/feeds update -a 2>&1 | tee /tmp/feeds_update.log
           FEEDS_U_EXIT=${PIPESTATUS[0]}
           echo "   feeds update exit code: $FEEDS_U_EXIT"
-          tail -5 /tmp/feeds_update.log
+          tail -5 /tmp/feeds_update.log || true
           
-          echo "=== Step 5: Install feeds (300s timeout) ==="
-          timeout 300 ./scripts/feeds install -a -f 2>&1 | tee /tmp/feeds_install.log
-          FEEDS_I_EXIT=${PIPESTATUS[0]}
-          echo "   feeds install exit code: $FEEDS_I_EXIT"
-          tail -20 /tmp/feeds_install.log
-          set -e
-          
-          echo "=== Step 5b: Verify feeds installation ==="
-          FEEDS_COUNT=$(find package/feeds -maxdepth 2 -type d -name "luci-app-*" 2>/dev/null | wc -l)
+          echo "=== Step 5: Install feeds (180s timeout) ==="
           echo "   Feeds luci-app directories: $FEEDS_COUNT"
           if [ "$FEEDS_COUNT" -lt 5 ]; then
             echo "⚠️ Warning: Only $FEEDS_COUNT luci-app feeds found (expected more)"

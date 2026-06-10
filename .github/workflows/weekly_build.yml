@@ -177,7 +177,7 @@ jobs:
           sed -i '/INCLUDE_Shadowsocks_Libev_Client/d' .config
           echo "   ✅ Problematic packages removed"
           
-set +e
+          set +e
           echo "=== Step 4: Update feeds (120s timeout) ==="
           (timeout 120 ./scripts/feeds update -a 2>&1 || true) | tee /tmp/feeds_update.log
           FEEDS_U_EXIT=${PIPESTATUS[0]}

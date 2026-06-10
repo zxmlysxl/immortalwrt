@@ -366,16 +366,34 @@ set +e
           # oldconfig only ADDS missing dependencies, does not remove explicit CONFIG_PACKAGE_xxx=y
           make oldconfig < /dev/null 2>&1 | tail -5 || true
           
-          echo "=== Step 9c: Force-restore luci packages after defconfig ==="
+                   echo "=== Step 9c: Force-restore luci packages (only if directories exist) ==="
           # defconfig may reset luci packages to # is not set, so restore them again
+          # Only restore packages whose directories ACTUALLY exist in package/ or package/feeds/
+          RESTORED=0
+          MISSING=0
           while IFS= read -r pkg; do
             base_pkg=$(echo "$pkg" | sed 's/^CONFIG_PACKAGE_//;s/=y//')
-            if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
-              sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
-            elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
-              echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+            # Check if package directory exists
+            PKG_DIR=""
+            for dir in package/feeds/luci/${base_pkg} package/luci/${base_pkg} package/${base_pkg}; do
+              if [ -d "$dir" ]; then
+                PKG_DIR="$dir"
+                break
+              fi
+            done
+            if [ -n "$PKG_DIR" ]; then
+              if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+                sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+              elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
+                echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+              fi
+              RESTORED=$((RESTORED + 1))
+            else
+              MISSING=$((MISSING + 1))
+              echo "   Skipping $base_pkg: directory not found"
             fi
           done < /tmp/luci-apps.txt
+          echo "   Restored $RESTORED packages, skipped $MISSING (not found in feeds)""" 
           
           echo "=== Step 9d: Final oldconfig to resolve dependencies ==="
           # After force-restoring packages, run oldconfig ONE MORE TIME to resolve new dependencies

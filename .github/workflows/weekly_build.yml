@@ -178,10 +178,10 @@ jobs:
           echo "   ✅ Problematic packages removed"
           
           echo "=== Step 4: Update feeds ==="
-          timeout 120 ./scripts/feeds update -a 2>&1 | tee /tmp/feeds_update.log || true
+          (timeout 120 ./scripts/feeds update -a 2>&1 || true) | tee /tmp/feeds_update.log
           
           echo "=== Step 5: Install feeds ==="
-          timeout 180 ./scripts/feeds install -a -f || true
+          (timeout 180 ./scripts/feeds install -a -f || true)
           
           echo "=== Step 5b: Verify feeds installation ==="
           FEEDS_COUNT=$(find package/feeds -maxdepth 2 -type d -name "luci-app-*" 2>/dev/null | wc -l)

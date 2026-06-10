@@ -190,12 +190,15 @@ jobs:
           tail -5 /tmp/feeds_update.log || true
           
           echo "=== Step 5: Install feeds (180s timeout) ==="
+          FEEDS_COUNT=$(find package/feeds/luci -maxdepth 1 -type d 2>/dev/null | wc -l)
           echo "   Feeds luci-app directories: $FEEDS_COUNT"
           if [ "$FEEDS_COUNT" -lt 5 ]; then
             echo "⚠️ Warning: Only $FEEDS_COUNT luci-app feeds found (expected more)"
             echo "   Available feeds:"
             ls -la package/feeds/ 2>/dev/null || echo "   package/feeds/ not found"
           fi
+          (timeout 180 ./scripts/feeds install -a 2>&1 || true) | tee /tmp/feeds_install.log
+          echo "   feeds install exit code: ${PIPESTATUS[0]}"
           
           echo "=== Step 7: Restore luci-app packages ==="
           # Restore luci-app packages: handle both # is not set AND completely missing lines

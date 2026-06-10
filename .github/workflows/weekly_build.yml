@@ -361,10 +361,10 @@ jobs:
           else
             echo "   ✅ Package count verified: $CURRENT_LUCI luci packages"
           
-          echo "=== Step 9b: Final defconfig ==="
-          # Final defconfig to ensure config is valid for compilation
-          # NOTE: defconfig in OpenWrt preserves explicit CONFIG_PACKAGE_xxx=y settings
-          make defconfig 2>&1 | tail -5 || true
+                   echo "=== Step 9b: Final oldconfig to resolve dependencies ==="
+          # Use oldconfig (not defconfig) to resolve dependencies without resetting restored packages
+          # oldconfig only ADDS missing dependencies, does not remove explicit CONFIG_PACKAGE_xxx=y
+          make oldconfig < /dev/null 2>&1 | tail -5 || true
           
           echo "=== Step 9c: Force-restore luci packages after defconfig ==="
           # defconfig may reset luci packages to # is not set, so restore them again

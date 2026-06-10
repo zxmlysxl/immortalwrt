@@ -179,10 +179,10 @@ jobs:
           
           set +e  # Disable exit-on-error for feeds commands
           echo "=== Step 4: Update feeds ==="
-          timeout 60 ./scripts/feeds update -a 2>&1 | tee /tmp/feeds_update.log
+          (timeout 60 ./scripts/feeds update -a 2>&1 || true) | tee /tmp/feeds_update.log
           
           echo "=== Step 5: Install feeds ==="
-          timeout 60 ./scripts/feeds install -a -f 2>&1 | tee /tmp/feeds_install.log
+          (timeout 60 ./scripts/feeds install -a -f2>&1 || true) | tee /tmp/feeds_install.log
           set -e  # Re-enable exit-on-error
           
           echo "=== Step 5b: Verify feeds installation ==="

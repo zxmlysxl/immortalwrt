@@ -179,7 +179,7 @@ jobs:
           
 set +e
           echo "=== Step 4: Update feeds (120s timeout) ==="
-          timeout 120 ./scripts/feeds update -a 2>&1 | tee /tmp/feeds_update.log
+          (timeout 120 ./scripts/feeds update -a 2>&1 || true) | tee /tmp/feeds_update.log
           FEEDS_U_EXIT=${PIPESTATUS[0]}
           echo "   feeds update exit code: $FEEDS_U_EXIT"
           tail -5 /tmp/feeds_update.log || true

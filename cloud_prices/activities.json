@@ -1,7 +1,7 @@
 {
   "activities": {
     "tencent": {
-      "hash": "8a4424cf9d3a80607234c1a379c3629e",
+      "hash": "72842cbcab84ca80faf7864c7781f35b",
       "url": "https://cloud.tencent.com/act",
       "activities": [
         {
@@ -40,13 +40,29 @@
           "url": "https://cloud.tencent.com/act/pro/teaStarterExhibition?from=29429&from=29430#2"
         }
       ],
-      "last_check": "2026-06-10T03:50:14.748944"
+      "last_check": "2026-06-10T15:51:28.148350"
     },
     "aliyun": {
-      "hash": "5f10eba4da8485aa4a1b8bdc7b3b9bb1",
+      "hash": "0287110a628c6603da3e5812e8947245",
       "url": "https://www.aliyun.com/activity",
-      "activities": [],
-      "last_check": "2026-06-10T03:50:17.647057"
+      "activities": [
+        {
+          "title": "限时免费领",
+          "provider": "aliyun",
+          "url": "https://qoder.com.cn/qoderwork?utm_content=g_1000413859"
+        },
+        {
+          "title": "活动规则",
+          "provider": "aliyun",
+          "url": "javascript://void(0)"
+        },
+        {
+          "title": "免费领取",
+          "provider": "aliyun",
+          "url": "https://qoder.com.cn/qoderwork?utm_content=g_1000413859"
+        }
+      ],
+      "last_check": "2026-06-10T15:51:31.313089"
     },
     "huawei": {
       "hash": "a1cd0f76dbd16594b62bdaa7553fb39f",
@@ -61,10 +77,10 @@
           "provider": "huawei"
         }
       ],
-      "last_check": "2026-06-10T03:50:18.328052"
+      "last_check": "2026-06-10T15:51:31.699951"
     },
     "aws": {
-      "hash": "75a23b6fabf3ad2a94401aafe3466f93",
+      "hash": "9b8738bb11dedfe96c5838e3f2d69832",
       "url": "https://aws.amazon.com/cn/free/",
       "activities": [
         {
@@ -78,8 +94,8 @@
           "url": "https://portal.aws.amazon.com/gp/aws/developer/registration/index.html?&p=free&c=hp2&z=6"
         }
       ],
-      "last_check": "2026-06-10T03:50:18.569240"
+      "last_check": "2026-06-10T15:51:31.856505"
     }
   },
-  "last_check": "2026-06-10T03:50:18.569256"
+  "last_check": "2026-06-10T15:51:31.856514"
 }

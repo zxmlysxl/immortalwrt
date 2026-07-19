@@ -31,7 +31,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
           show-progress: true
 
@@ -165,6 +165,11 @@ jobs:
           grep '^CONFIG_PACKAGE_zsh=' .config.original > /tmp/zsh-package.txt || true
           echo "   zsh package: $(cat /tmp/zsh-package.txt 2>/dev/null || echo 'not found')"
           
+          echo "=== Step 2f: Extract base luci packages (luci, luci-base, luci-lib-*, etc.) ==="
+          # Extract base luci packages: meta-packages (luci, luci-light, luci-base, luci-compat, luci-lua-runtime) and luci-lib-* packages
+          grep -E '^CONFIG_PACKAGE_luci(-lib|-light|-base|-compat|-lua-runtime)?=|^CONFIG_PACKAGE_luci-lib-' .config.original > /tmp/luci-base.txt || true
+          echo "   Found $(wc -l < /tmp/luci-base.txt 2>/dev/null || echo 0) base luci packages"
+          
           echo "=== Step 3: Remove problematic packages ==="
           # 完全移除有冲突的包
           sed -i '/^CONFIG_PACKAGE.*openvswitch/d' .config
@@ -177,20 +182,23 @@ jobs:
           sed -i '/INCLUDE_Shadowsocks_Libev_Client/d' .config
           echo "   ✅ Problematic packages removed"
           
-          echo "=== Step 4: Update feeds ==="
-          ./scripts/feeds update -a
+          set +e
+          echo "=== Step 4: Update feeds (120s timeout) ==="
+          (timeout 120 ./scripts/feeds update -a 2>&1 || true) | tee /tmp/feeds_update.log
+          FEEDS_U_EXIT=${PIPESTATUS[0]}
+          echo "   feeds update exit code: $FEEDS_U_EXIT"
+          tail -5 /tmp/feeds_update.log || true
           
-          echo "=== Step 5: Install feeds ==="
-          ./scripts/feeds install -a -f || true
-          
-          echo "=== Step 5b: Verify feeds installation ==="
-          FEEDS_COUNT=$(find package/feeds -maxdepth 2 -type d -name "luci-app-*" 2>/dev/null | wc -l)
+          echo "=== Step 5: Install feeds (180s timeout) ==="
+          FEEDS_COUNT=$(find package/feeds/luci -maxdepth 1 -type d 2>/dev/null | wc -l)
           echo "   Feeds luci-app directories: $FEEDS_COUNT"
           if [ "$FEEDS_COUNT" -lt 5 ]; then
             echo "⚠️ Warning: Only $FEEDS_COUNT luci-app feeds found (expected more)"
             echo "   Available feeds:"
             ls -la package/feeds/ 2>/dev/null || echo "   package/feeds/ not found"
           fi
+          (timeout 180 ./scripts/feeds install -a 2>&1 || true) | tee /tmp/feeds_install.log
+          echo "   feeds install exit code: ${PIPESTATUS[0]}"
           
           echo "=== Step 7: Restore luci-app packages ==="
           # Restore luci-app packages: handle both # is not set AND completely missing lines
@@ -279,6 +287,18 @@ jobs:
             fi
           done < /tmp/wireguard-tools.txt 2>/dev/null || true
           
+          echo "=== Step 7h: Restore base luci packages (luci, luci-base, luci-lib-*, etc.) ==="
+          while IFS= read -r pkg; do
+            base_pkg=$(echo "$pkg" | sed 's/^CONFIG_PACKAGE_//;s/=y//')
+            if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+              sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+              echo "   ✅ Restored base (uncommented): $base_pkg"
+            elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
+              echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+              echo "   ✅ Restored base (added): $base_pkg"
+            fi
+          done < /tmp/luci-base.txt 2>/dev/null || true
+          
           echo "=== Step 8: Enable Simplified Chinese language support ==="
           # Use zh_Hans which is the actual Kconfig symbol (not zh-cn)
           sed -i 's/^# CONFIG_LUCI_LANG_zh_Hans is not set$/CONFIG_LUCI_LANG_zh_Hans=y/' .config
@@ -340,9 +360,76 @@ jobs:
           printf 'PasswordAuthentication yes\n' > files/etc/ssh/sshd_config.d/zz-password-auth.conf
           echo "   ✅ SSH config: PasswordAuthentication yes, UsePAM no"
           
-          echo "=== Step 9: Final defconfig to lock in restored packages ==="
-          # Use defconfig instead of oldconfig to avoid undoing the restore work
-          make defconfig 2>&1 || true
+          echo "=== Step 9: Final check of luci-app count BEFORE compilation ==="
+          ORIG_LUCI=$(grep -c '^CONFIG_PACKAGE_luci' .config.original 2>/dev/null || echo 0)
+          CURRENT_LUCI=$(grep -c '^CONFIG_PACKAGE_luci' .config 2>/dev/null || echo 0)
+          echo "   .config.original has $ORIG_LUCI luci packages"
+          echo "   Current .config has $CURRENT_LUCI luci packages"
+          if [ "$CURRENT_LUCI" -lt "$ORIG_LUCI" ]; then
+            echo "   ❌ Package count mismatch! Expected $ORIG_LUCI but got $CURRENT_LUCI"
+            echo "   Missing packages will cause firmware size to be reduced!"
+            echo "   Listing missing packages:"
+            grep '^CONFIG_PACKAGE_luci' .config.original | while read pkg; do
+              base=$(echo "$pkg" | sed 's/^CONFIG_PACKAGE_//;s/=y//')
+              if ! grep -q "^CONFIG_PACKAGE_${base}=" .config 2>/dev/null; then
+                echo "   MISSING: $base"
+              fi
+            done
+            echo ""
+            echo "   Build cannot continue with incorrect package count."
+            exit 1
+          else
+            echo "   ✅ Package count verified: $CURRENT_LUCI luci packages"
+          
+                   echo "=== Step 9b: Final oldconfig to resolve dependencies ==="
+          # Use oldconfig (not defconfig) to resolve dependencies without resetting restored packages
+          # oldconfig only ADDS missing dependencies, does not remove explicit CONFIG_PACKAGE_xxx=y
+          make oldconfig < /dev/null 2>&1 | tail -5 || true
+          
+                   echo "=== Step 9c: Force-restore luci packages (only if directories exist) ==="
+          # defconfig may reset luci packages to # is not set, so restore them again
+          # Only restore packages whose directories ACTUALLY exist in package/ or package/feeds/
+          RESTORED=0
+          MISSING=0
+          while IFS= read -r pkg; do
+            base_pkg=$(echo "$pkg" | sed 's/^CONFIG_PACKAGE_//;s/=y//')
+            # Check if package directory exists
+            PKG_DIR=""
+            for dir in package/feeds/luci/${base_pkg} package/luci/${base_pkg} package/${base_pkg}; do
+              if [ -d "$dir" ]; then
+                PKG_DIR="$dir"
+                break
+              fi
+            done
+            if [ -n "$PKG_DIR" ]; then
+              if grep -q "^# CONFIG_PACKAGE_${base_pkg} is not set" .config 2>/dev/null; then
+                sed -i "s/# CONFIG_PACKAGE_${base_pkg} is not set/CONFIG_PACKAGE_${base_pkg}=y/" .config
+              elif ! grep -q "^CONFIG_PACKAGE_${base_pkg}=" .config 2>/dev/null; then
+                echo "CONFIG_PACKAGE_${base_pkg}=y" >> .config
+              fi
+              RESTORED=$((RESTORED + 1))
+            else
+              MISSING=$((MISSING + 1))
+              echo "   Skipping $base_pkg: directory not found"
+            fi
+          done < /tmp/luci-apps.txt
+          echo "   Restored $RESTORED packages, skipped $MISSING (not found in feeds)""" 
+          
+          echo "=== Step 9d: Final oldconfig to resolve dependencies ==="
+          # After force-restoring packages, run oldconfig ONE MORE TIME to resolve new dependencies
+          # Without this, some packages might have broken dependencies
+          make oldconfig < /dev/null 2>&1 | tail -5 || true
+          
+          echo "=== Step 9e: Final verify ==="
+          FINAL_LUCI=$(grep -c '^CONFIG_PACKAGE_luci' .config 2>/dev/null || echo 0)
+          echo "   LuCI packages after final restore: $FINAL_LUCI"
+          echo "   Expected: $ORIG_LUCI"
+          if [ "$FINAL_LUCI" -lt "$ORIG_LUCI" ]; then
+            echo "   ⚠️ WARNING: $((ORIG_LUCI - FINAL_LUCI)) packages still missing"
+            echo "   This may cause reduced firmware size but continuing anyway..."
+          else
+            echo "   ✅ Package count verified: $FINAL_LUCI luci packages"
+          fi
           
           echo "=== Step 9b: Re-apply version config after defconfig (defconfig may reset it) ==="
           sed -i 's/^# CONFIG_VERSIONOPT is not set$/CONFIG_VERSIONOPT=y/' .config
@@ -365,6 +452,7 @@ jobs:
           fi
           echo "   ✅ shadow-utils re-applied after defconfig"
           echo "   ✅ SSH config injected via files/etc/ssh/"
+          fi
           
           echo "=== Step 10: Verify .config ==="
           echo "   LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"

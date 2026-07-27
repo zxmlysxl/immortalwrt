@@ -1,0 +1,5 @@
+ID=immortalwrt
+ID_LIKE=openwrt
+VERSION="%D %V"
+VERSION_CODE="%C"
+PRETTY_NAME="%D %V by zuoxm | R%C"

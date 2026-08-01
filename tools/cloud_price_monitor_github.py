@@ -32,7 +32,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from lib.scrapers import fetch_all_prices, HAS_PLAYWRIGHT
 from lib.activities import check_all_activities, _activity_signature
-from lib.notify import send_telegram, format_price_report, format_activity_report
+from lib.notify import send_telegram as notify_telegram, format_price_report, format_activity_report
 
 # === 配置 ===
 DATA_DIR = SCRIPT_DIR.parent / "cloud_prices"
@@ -150,12 +150,12 @@ def main():
     save_json(HISTORY_FILE, history)
     
     # ==================== 通知 ====================
-    send_telegram = bool(os.getenv("TELEGRAM_BOT_TOKEN")) and bool(os.getenv("TELEGRAM_CHAT_ID"))
+    telegram_enabled = bool(os.getenv("TELEGRAM_BOT_TOKEN")) and bool(os.getenv("TELEGRAM_CHAT_ID"))
     
     has_price_change = bool(price_changes)
     has_new_activity = bool(activity_result["new_activities"])
     
-    if send_telegram:
+    if telegram_enabled:
         if has_price_change or has_new_activity:
             # 有变化，发详细通知
             msgs = []
@@ -189,7 +189,7 @@ def main():
             if len(full_msg) > 4000:
                 full_msg = full_msg[:4000] + "\n...(过长已截断)"
             
-            send_telegram(full_msg)
+            notify_telegram(full_msg)
         else:
             # 无变化，发简报
             summary = f"""📊 **定时检查报告**
@@ -199,7 +199,7 @@ def main():
 活动: {len(activity_result['all_activities'])} 条（无新增）
 
 ✅ 系统运行正常"""
-            send_telegram(summary)
+            notify_telegram(summary)
     
     print(f"\n{'=' * 60}")
     print(f"[{datetime.now()}] 监控完成")
@@ -207,7 +207,7 @@ def main():
     print(f"活动: {len(activity_result['all_activities'])} 条 | 新增: {len(activity_result['new_activities'])}")
     print(f"{'=' * 60}")
     
-    return 0 if (has_price_change or has_new_activity or not send_telegram) else 0
+    return 0 if (has_price_change or has_new_activity or not telegram_enabled) else 0
 
 
 if __name__ == "__main__":

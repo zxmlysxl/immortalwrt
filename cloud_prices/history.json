@@ -90,6 +90,22 @@
       "hash": "b9e7042f68e81676012570b581e7ade8",
       "changes_count": 0,
       "changes": []
+    },
+    {
+      "timestamp": "2026-08-01T14:47:05.230840",
+      "prices_hash": "1c525e1a33764557377c326a4c7f8a36",
+      "price_changes_count": 0,
+      "price_changes": [],
+      "activities_count": 39,
+      "new_activities_count": 16
+    },
+    {
+      "timestamp": "2026-08-01T14:56:24.646076",
+      "prices_hash": "1c525e1a33764557377c326a4c7f8a36",
+      "price_changes_count": 0,
+      "price_changes": [],
+      "activities_count": 39,
+      "new_activities_count": 10
     }
   ]
 }

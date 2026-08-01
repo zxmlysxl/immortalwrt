@@ -1,90 +1,242 @@
 {
-  "activities": {
+  "by_provider": {
     "tencent": {
-      "hash": "295158ff52137812ce916ec3a2fb9b78",
-      "url": "https://cloud.tencent.com/act",
+      "name": "腾讯云",
       "activities": [
         {
-          "title": "最新活动HOT",
-          "provider": "tencent",
-          "url": "https://cloud.tencent.com/act"
+          "title": "最新活动",
+          "url": "https://cloud.tencent.com/act",
+          "provider": "tencent"
+        },
+        {
+          "title": "免费注册",
+          "url": "https://cloud.tencent.com/act",
+          "provider": "tencent"
+        },
+        {
+          "title": "域名专场特惠",
+          "url": "https://cloud.tencent.com/act/pro/domain?from=27346",
+          "provider": "tencent"
+        },
+        {
+          "title": "对象存储COS迁移活动",
+          "url": "https://cloud.tencent.com/act/pro/teaStarterExhibition?from=29429&from=29430#2",
+          "provider": "tencent"
+        },
+        {
+          "title": "企业上云优惠商城",
+          "url": "https://cloud.tencent.com/act/pro/enterprise2022?from=28054",
+          "provider": "tencent"
+        },
+        {
+          "title": "免费产品体验",
+          "url": "https://cloud.tencent.com/act/free?from=19067",
+          "provider": "tencent"
+        },
+        {
+          "title": "推广大使推荐返现HOT",
+          "url": "https://cloud.tencent.com/act/partner/cps?from=19068",
+          "provider": "tencent"
+        },
+        {
+          "title": "云+校园HOT",
+          "url": "https://cloud.tencent.com/act/campus?from=19070",
+          "provider": "tencent"
+        },
+        {
+          "title": "大数据特惠专场",
+          "url": "https://cloud.tencent.com/act/pro/2023seasonbigdata?from=23279",
+          "provider": "tencent"
+        },
+        {
+          "title": "AI代码助手旗舰版限时免费",
+          "url": "https://cloud.tencent.com/product/acc?from=22784",
+          "provider": "tencent"
+        }
+      ],
+      "new_activities": [
+        {
+          "title": "轻量云 · 游戏服特惠专场",
+          "url": "https://cloud.tencent.com/developer/tutorial/practice/1024?from=25297",
+          "provider": "tencent"
+        },
+        {
+          "title": "免费体验",
+          "url": "https://cloud.tencent.com/act?tab_order=1&buylimit=free#all",
+          "provider": "tencent"
+        },
+        {
+          "title": "会员续费",
+          "url": "https://cloud.tencent.com/act/pro/yunmember?from=22118",
+          "provider": "tencent"
+        },
+        {
+          "title": "新用户专享",
+          "url": "https://cloud.tencent.com/act?tab_order=1&buylimit=new#all",
+          "provider": "tencent"
+        },
+        {
+          "title": "企业特惠",
+          "url": "https://cloud.tencent.com/act?tab_order=1&buylimit=company#all",
+          "provider": "tencent"
+        },
+        {
+          "title": "产品首单特惠",
+          "url": "https://cloud.tencent.com/act?tab_order=1&buylimit=first#all",
+          "provider": "tencent"
+        },
+        {
+          "title": "全部活动",
+          "url": "https://cloud.tencent.com/act?tab_order=1&buylimit=all#all",
+          "provider": "tencent"
         },
         {
           "title": "优惠商品与活动合集",
-          "provider": "tencent",
-          "url": "#all"
+          "url": "https://cloud.tencent.com/act",
+          "provider": "tencent"
         },
         {
           "title": "领券中心",
-          "provider": "tencent",
-          "url": "#lingquan"
+          "url": "https://cloud.tencent.com/act",
+          "provider": "tencent"
         },
         {
           "title": "推广大使推荐返现HOT推荐好友上云最高得8万月佣金前往了解",
-          "provider": "tencent",
-          "url": "https://cloud.tencent.com/act/partner/cps?from=19068"
-        },
-        {
-          "title": "云+校园HOT学生用户享服务器最低30元立即选购",
-          "provider": "tencent",
-          "url": "https://cloud.tencent.com/act/campus?from=19070"
-        },
-        {
-          "title": "域名专场特惠HOT.com域名.cn域名首年0元立即选购",
-          "provider": "tencent",
-          "url": "https://cloud.tencent.com/act/pro/domain?from=27346"
-        },
-        {
-          "title": "对象存储COS迁移活动迁移享免费存储空间和大额代金券立即选购",
-          "provider": "tencent",
-          "url": "https://cloud.tencent.com/act/pro/teaStarterExhibition?from=29429&from=29430#2"
+          "url": "https://cloud.tencent.com/act/partner/cps?from=19068",
+          "provider": "tencent"
         }
       ],
-      "last_check": "2026-03-05T10:24:07.831314"
+      "count": 20,
+      "new_count": 10
     },
     "aliyun": {
-      "hash": "4382562240df338e10216c81230ce321",
-      "url": "https://www.aliyun.com/activity",
-      "activities": [],
-      "last_check": "2026-03-05T10:24:07.994414"
+      "name": "阿里云",
+      "activities": [
+        {
+          "title": "限时免费领",
+          "url": "https://qoder.com.cn/qoderwork",
+          "provider": "aliyun"
+        },
+        {
+          "title": "立即抢购",
+          "url": "https://www.aliyun.com/benefit/scene/qwen3",
+          "provider": "aliyun"
+        },
+        {
+          "title": "活动规则",
+          "url": "https://www.aliyun.com/activity",
+          "provider": "aliyun"
+        },
+        {
+          "title": "免费领取",
+          "url": "https://qoder.com.cn/qoderwork",
+          "provider": "aliyun"
+        },
+        {
+          "title": "限时8折",
+          "url": "https://bailian.console.aliyun.com/cn-beijing/?tab=model#/model-market/detail/happyhorse-1.0-t2v?serviceSite=asia-pacific-china",
+          "provider": "aliyun"
+        }
+      ],
+      "new_activities": [],
+      "count": 5,
+      "new_count": 0
     },
     "huawei": {
-      "hash": "470fad28d001bb770b392d3e74044b1f",
-      "url": "https://activity.huaweicloud.com",
+      "name": "华为云",
       "activities": [
         {
-          "title": "精选推荐活动推荐",
+          "title": "待续费产品",
+          "url": "https://activity.huaweicloud.com//account.huaweicloud.com/usercenter/?locale=zh-cn#/userindex/renewalManagement",
           "provider": "huawei"
         },
         {
-          "title": "所有活动",
+          "title": "查看更多活动",
+          "url": "https://activity.huaweicloud.com",
+          "provider": "huawei"
+        },
+        {
+          "title": "云数据库云数据库2折起，助力企业加速数字化转型RDS for MySQLFlexus云数据库了解详情",
+          "url": "https://activity.huaweicloud.com/dbs_Promotion/index.html",
+          "provider": "huawei"
+        },
+        {
+          "title": "老用户权益中心老客权益待领取，续费、升级、新购都划算续费享9折升级享7折了解详情",
+          "url": "https://activity.huaweicloud.com/member.html",
+          "provider": "huawei"
+        },
+        {
+          "title": "备案提供免费备案服务",
+          "url": "https://beian.huaweicloud.com",
+          "provider": "huawei"
+        },
+        {
+          "title": "sales@huaweicloud.com",
+          "url": "https://activity.huaweicloud.com",
           "provider": "huawei"
         }
       ],
-      "last_check": "2026-03-05T10:24:08.144407"
+      "new_activities": [],
+      "count": 6,
+      "new_count": 0
     },
     "aws": {
-      "hash": "5c8b294886104f0f97e8bb74ea740edb",
-      "url": "https://aws.amazon.com/cn/free/",
+      "name": "AWS",
       "activities": [
         {
-          "title": "您是否在 2025 年 7 月 16 日之前创建了 AWS 账户？ 访问旧版免费套餐",
-          "provider": "aws",
-          "url": "/cn/free/legacy/?p=free&c=hp2&z=1"
+          "title": "开始免费使用 AWS",
+          "url": "https://portal.aws.amazon.com/billing/signup?sc_icampaign=hp-5-free-tier-25&sc_ichannel=ha&sc_iplace=hero&trk=a3c4a4e5-2749-4d31-bde5-8797858876c6",
+          "provider": "aws"
         },
         {
-          "title": "创建免费账户",
-          "provider": "aws",
-          "url": "https://portal.aws.amazon.com/gp/aws/developer/registration/index.html?refid=em_127222&p=free&c=hp2&z=1&target=_blank"
+          "title": "IndustrialSiemens Mobility 利用 AWS AI 将 175 年的数据转化为可搜索的洞察阅读全文",
+          "url": "https://aws.amazon.com/solutions/case-studies/innovators/siemens/?hp=cs",
+          "provider": "aws"
         },
         {
-          "title": "开始使用注册 AWS 账户立即开启 AWS 免费套餐。创建 AWS 账户",
-          "provider": "aws",
-          "url": "https://portal.aws.amazon.com/gp/aws/developer/registration/index.html?&p=free&c=hp2&z=6"
+          "title": "获得极佳的云功能选择借助包含 240 多项综合服务的非凡产品组合，更快实现现代化并更高效地进行扩展开始免费使用 AWS",
+          "url": "https://aws.amazon.com/cn/campaigns/",
+          "provider": "aws"
+        },
+        {
+          "title": "Industrial",
+          "url": "https://aws.amazon.com/solutions/case-studies/innovators/siemens/?hp=cs",
+          "provider": "aws"
+        },
+        {
+          "title": "蒙特利尔，魁北克省",
+          "url": "https://aws.amazon.com/cn/campaigns/",
+          "provider": "aws"
+        },
+        {
+          "title": "多伦多，安大略省",
+          "url": "https://aws.amazon.com/cn/campaigns/",
+          "provider": "aws"
+        },
+        {
+          "title": "我希望免费试用 AWS",
+          "url": "https://aws.amazon.com/cn/campaigns/",
+          "provider": "aws"
+        },
+        {
+          "title": "免费试用 AWS",
+          "url": "https://aws.amazon.com/cn/campaigns/",
+          "provider": "aws"
         }
       ],
-      "last_check": "2026-03-05T10:24:08.465303"
+      "new_activities": [],
+      "count": 8,
+      "new_count": 0
+    },
+    "vultr": {
+      "name": "Vultr",
+      "activities": [],
+      "new_activities": [],
+      "count": 0,
+      "new_count": 0
     }
   },
-  "last_check": "2026-03-05T10:24:08.465332"
+  "last_check": "2026-08-01T14:56:10.226944",
+  "all_count": 39,
+  "new_count": 10
 }

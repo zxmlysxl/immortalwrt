@@ -317,6 +317,7 @@ jobs:
             echo "CONFIG_VERSIONOPT=y" >> .config
             echo "   ✅ Added CONFIG_VERSIONOPT=y"
           fi
+          BUILD_DATE_FULL=$(date +%Y%m%d%H%M)
           BUILD_DATE_SHORT=$(date +%Y%m%d)
           BUILD_CODE=$(date +%y.%m.%d)
           sed -i '/^CONFIG_VERSION_DIST=/d' .config
@@ -325,10 +326,39 @@ jobs:
           echo "CONFIG_VERSION_DIST=\"Z-ImmortalWrt\"" >> .config
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
-          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
-          # 修改 DISTRIB_DESCRIPTION 模板，加入 "by zuoxm | R" 前缀
-          echo "DISTRIB_DESCRIPTION='%D %F by zuoxm | R%G'" > package/base-files/files/etc/openwrt_release
-          echo "   ✅ Modified openwrt_release template: %D %F by zuoxm | R%G"
+          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_FULL} by zuoxm | R${BUILD_CODE}"
+          # 用 sed 只替换 DISTRIB_DESCRIPTION 行，不覆盖整个文件
+          sed -i "s|^DISTRIB_DESCRIPTION=.*|DISTRIB_DESCRIPTION='%D %F by zuoxm | R%G'|" package/base-files/files/etc/openwrt_release
+          echo "   ✅ Modified openwrt_release: DISTRIB_DESCRIPTION='%D %F by zuoxm | R%G'"
+          # 同步更新 rootfs overlay 文件（使用实际编译时间，不用 % 占位符）
+          echo "DISTRIB_ID='ImmortalWrt'" > files/etc/openwrt_release
+          echo "DISTRIB_RELEASE='${BUILD_DATE_SHORT}'" >> files/etc/openwrt_release
+          echo "DISTRIB_REVISION='${BUILD_DATE_FULL}'" >> files/etc/openwrt_release
+          echo "DISTRIB_TARGET='%S/%A'" >> files/etc/openwrt_release
+          echo "DISTRIB_DESCRIPTION='Z-ImmortalWrt ${BUILD_DATE_FULL} by zuoxm | R${BUILD_CODE}'" >> files/etc/openwrt_release
+          echo "DISTRIB_TAINTS='%t'" >> files/etc/openwrt_release
+          echo "   ✅ Updated files/etc/openwrt_release with actual build time"
+          # 同步更新 os-release
+          echo 'NAME="Z-ImmortalWrt"' > files/usr/lib/os-release
+          echo "VERSION='${BUILD_DATE_FULL}'" >> files/usr/lib/os-release
+          echo 'ID="zxm"' >> files/usr/lib/os-release
+          echo 'ID_LIKE="lede openwrt"' >> files/usr/lib/os-release
+          echo "PRETTY_NAME='Z-ImmortalWrt ${BUILD_DATE_FULL} by zuoxm | R${BUILD_CODE}'" >> files/usr/lib/os-release
+          echo "VERSION_ID='${BUILD_CODE}'" >> files/usr/lib/os-release
+          echo 'HOME_URL="https://immortalwrt.org/"' >> files/usr/lib/os-release
+          echo 'BUG_URL="https://github.com/immortalwrt/immortalwrt/issues"' >> files/usr/lib/os-release
+          echo 'SUPPORT_URL="https://github.com/immortalwrt/immortalwrt/discussions"' >> files/usr/lib/os-release
+          echo 'FIRMWARE_URL="https://github.com/zxmlysxl/immortalwrt/releases"' >> files/usr/lib/os-release
+          echo "BUILD_ID='${BUILD_DATE_FULL}'" >> files/usr/lib/os-release
+          echo 'OPENWRT_BOARD="%S"' >> files/usr/lib/os-release
+          echo 'OPENWRT_ARCH="%A"' >> files/usr/lib/os-release
+          echo 'OPENWRT_TAINTS="%t"' >> files/usr/lib/os-release
+          echo 'OPENWRT_DEVICE_MANUFACTURER="ImmortalWrt"' >> files/usr/lib/os-release
+          echo 'OPENWRT_DEVICE_MANUFACTURER_URL="https://immortalwrt.org/"' >> files/usr/lib/os-release
+          echo 'OPENWRT_DEVICE_PRODUCT="Generic"' >> files/usr/lib/os-release
+          echo 'OPENWRT_DEVICE_REVISION="v0"' >> files/usr/lib/os-release
+          echo "OPENWRT_RELEASE='Z-ImmortalWrt ${BUILD_DATE_FULL} by zuoxm | R${BUILD_CODE}'" >> files/usr/lib/os-release
+          echo "   ✅ Updated files/usr/lib/os-release with actual build time"
           
           echo "=== Step 8c: Enable openssh-server and dependencies for SFTP/PAM ==="
           sed -i 's/^# CONFIG_PACKAGE_openssh-server is not set$/CONFIG_PACKAGE_openssh-server=y/' .config
@@ -443,8 +473,8 @@ jobs:
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
           echo "   ✅ Version config re-applied after defconfig"
-          # 同样确保 openwrt_release 在编译后重新写入
-          echo "DISTRIB_DESCRIPTION='%D %F by zuoxm | R%G'" > package/base-files/files/etc/openwrt_release
+          # 用 sed 只替换 DISTRIB_DESCRIPTION 行，不覆盖整个文件
+          sed -i "s|^DISTRIB_DESCRIPTION=.*|DISTRIB_DESCRIPTION='%D %F by zuoxm | R%G'|" package/base-files/files/etc/openwrt_release
           echo "   ✅ openwrt_release template re-set"
           sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
           if ! grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then
@@ -537,12 +567,22 @@ jobs:
       - name: Check output
         run: |
           echo "=== 检查编译产物 ==="
-          find bin/targets -name "*.img.gz" -ls 2>/dev/null || echo "No img.gz found"
-          MANIFEST_FILES=$(find bin/targets -name "*.manifest" 2>/dev/null)
+          # 扩大搜索范围，兼容不同目录结构
+          find bin -name "*.img.gz" -ls 2>/dev/null || echo "No img.gz found"
+          echo ""
+          echo "=== bin 目录结构 ==="
+          find bin -maxdepth 4 -type d 2>/dev/null | head -30
+          echo ""
+          # 兼容多种 manifest 路径
+          MANIFEST_FILES=$(find bin -name "*.manifest" 2>/dev/null)
           if [ -z "$MANIFEST_FILES" ]; then
             echo "❌ 未找到 manifest 文件"
+            echo "=== bin 目录内容 ==="
+            find bin -type f 2>/dev/null | head -30
             exit 1
           fi
+          echo "Found manifests:"
+          echo "$MANIFEST_FILES"
           # Use grep | wc -l to get total count across all manifests (safer than grep -c with multi-line output)
           TOTAL_LUCI=$(cat $MANIFEST_FILES 2>/dev/null | grep -c "luci-app" || echo "0")
           echo "LuCI packages in manifest: $TOTAL_LUCI"
@@ -553,6 +593,9 @@ jobs:
             exit 1
           fi
           echo "✅ 固件包含 $TOTAL_LUCI 个 LuCI 插件"
+          echo ""
+          echo "=== 固件文件 ==="
+          find bin/targets -name "*.img*" -o -name "*.vmdk" 2>/dev/null | head -10
           ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
 
       - name: Rename and package firmware

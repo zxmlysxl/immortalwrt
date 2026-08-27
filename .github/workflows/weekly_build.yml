@@ -573,23 +573,34 @@ jobs:
           echo "=== bin 目录结构 ==="
           find bin -maxdepth 4 -type d 2>/dev/null | head -30
           echo ""
-          # 兼容多种 manifest 路径
-          MANIFEST_FILES=$(find bin -name "*.manifest" 2>/dev/null)
-          if [ -z "$MANIFEST_FILES" ]; then
-            echo "❌ 未找到 manifest 文件"
+          # APK 模式下生成 index.json/packages.adb，opkg 模式下生成 Packages.manifest
+          MANIFEST_FILES=$(find bin -name "Packages.manifest" 2>/dev/null)
+          APK_INDEX=$(find bin -name "index.json" 2>/dev/null)
+          APK_ADB=$(find bin -name "packages.adb" 2>/dev/null)
+          
+          TOTAL_LUCI=0
+          if [ -n "$MANIFEST_FILES" ]; then
+            echo "Found manifests:"
+            echo "$MANIFEST_FILES"
+            TOTAL_LUCI=$(cat $MANIFEST_FILES 2>/dev/null | grep -c "luci-app" || echo "0")
+            echo "LuCI packages in manifest: $TOTAL_LUCI"
+          elif [ -n "$APK_INDEX" ]; then
+            echo "Using APK index.json for package counting"
+            TOTAL_LUCI=$(grep -o '"name":"luci-app[^}]*"' $APK_INDEX 2>/dev/null | wc -l || echo "0")
+            echo "LuCI packages in APK index: $TOTAL_LUCI"
+          elif [ -n "$APK_ADB" ]; then
+            echo "Using APK packages.adb for package counting"
+            TOTAL_LUCI=$(find bin -name "*.apk" 2>/dev/null | grep -c "luci-app" || echo "0")
+            echo "LuCI .apk packages: $TOTAL_LUCI"
+          else
+            echo "❌ 未找到 manifest 或 APK 索引文件"
             echo "=== bin 目录内容 ==="
             find bin -type f 2>/dev/null | head -30
             exit 1
           fi
-          echo "Found manifests:"
-          echo "$MANIFEST_FILES"
-          # Use grep | wc -l to get total count across all manifests (safer than grep -c with multi-line output)
-          TOTAL_LUCI=$(cat $MANIFEST_FILES 2>/dev/null | grep -c "luci-app" || echo "0")
-          echo "LuCI packages in manifest: $TOTAL_LUCI"
+          
           if [ "$TOTAL_LUCI" -eq 0 ]; then
             echo "❌ 严重错误：固件中没有 LuCI 插件！"
-            echo "   manifest 文件内容（前30行）："
-            cat $MANIFEST_FILES 2>/dev/null | head -30
             exit 1
           fi
           echo "✅ 固件包含 $TOTAL_LUCI 个 LuCI 插件"
@@ -667,7 +678,6 @@ jobs:
           files: |
             Z-ImmWrt-*.img.gz
             Z-ImmWrt-*.sha256
-            bin/targets/x86/64/*.manifest
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

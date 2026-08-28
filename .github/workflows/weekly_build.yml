@@ -567,36 +567,57 @@ jobs:
       - name: Check output
         run: |
           echo "=== 检查编译产物 ==="
-          # 扩大搜索范围，兼容不同目录结构
-          find bin -name "*.img.gz" -ls 2>/dev/null || echo "No img.gz found"
+          # 检查固件文件是否存在
+          IMG_FILES=$(find bin -name "*.img.gz" 2>/dev/null)
+          if [ -z "$IMG_FILES" ]; then
+            echo "❌ 未找到固件文件 .img.gz"
+            echo "=== bin 目录内容 ==="
+            find bin -type f 2>/dev/null | head -30
+            exit 1
+          fi
+          echo "✅ 找到固件文件:"
+          echo "$IMG_FILES" | head -5
+          
           echo ""
           echo "=== bin 目录结构 ==="
           find bin -maxdepth 4 -type d 2>/dev/null | head -30
-          echo ""
-          # APK 模式下生成 index.json/packages.adb，opkg 模式下生成 Packages.manifest
-          MANIFEST_FILES=$(find bin -name "Packages.manifest" 2>/dev/null)
-          APK_INDEX=$(find bin -name "index.json" 2>/dev/null)
-          APK_ADB=$(find bin -name "packages.adb" 2>/dev/null)
           
+          # 统计 LuCI 包数量（多种方式兜底）
           TOTAL_LUCI=0
+          
+          # 方式1: Packages.manifest
+          MANIFEST_FILES=$(find bin -name "Packages.manifest" 2>/dev/null)
           if [ -n "$MANIFEST_FILES" ]; then
             echo "Found manifests:"
             echo "$MANIFEST_FILES"
             TOTAL_LUCI=$(cat $MANIFEST_FILES 2>/dev/null | grep -c "luci-app" || echo "0")
             echo "LuCI packages in manifest: $TOTAL_LUCI"
-          elif [ -n "$APK_INDEX" ]; then
-            echo "Using APK index.json for package counting"
-            TOTAL_LUCI=$(grep -o '"name":"luci-app[^}]*"' $APK_INDEX 2>/dev/null | wc -l || echo "0")
-            echo "LuCI packages in APK index: $TOTAL_LUCI"
-          elif [ -n "$APK_ADB" ]; then
-            echo "Using APK packages.adb for package counting"
-            TOTAL_LUCI=$(find bin -name "*.apk" 2>/dev/null | grep -c "luci-app" || echo "0")
-            echo "LuCI .apk packages: $TOTAL_LUCI"
-          else
-            echo "❌ 未找到 manifest 或 APK 索引文件"
-            echo "=== bin 目录内容 ==="
-            find bin -type f 2>/dev/null | head -30
-            exit 1
+          fi
+          
+          # 方式2: APK index.json
+          if [ "$TOTAL_LUCI" -eq 0 ]; then
+            APK_INDEX=$(find bin -name "index.json" 2>/dev/null)
+            if [ -n "$APK_INDEX" ]; then
+              echo "Using APK index.json for package counting"
+              TOTAL_LUCI=$(grep -o '"name":"luci-app[^"]*"' $APK_INDEX 2>/dev/null | wc -l || echo "0")
+              echo "LuCI packages in APK index: $TOTAL_LUCI"
+            fi
+          fi
+          
+          # 方式3: 直接数 .apk 文件
+          if [ "$TOTAL_LUCI" -eq 0 ]; then
+            APK_COUNT=$(find bin -name "*.apk" 2>/dev/null | grep -c "luci-app" || echo "0")
+            if [ "$APK_COUNT" -gt 0 ]; then
+              echo "Found $APK_COUNT luci-app .apk files directly"
+              TOTAL_LUCI=$APK_COUNT
+            fi
+          fi
+          
+          # 方式4: 从 .config 验证（退而求其次）
+          if [ "$TOTAL_LUCI" -eq 0 ]; then
+            CONFIG_LUCI=$(grep -c '^CONFIG_PACKAGE_luci-app' .config 2>/dev/null || echo "0")
+            echo "⚠️ 无法从编译产物统计，使用 .config 计数: $CONFIG_LUCI 个 luci-app"
+            TOTAL_LUCI=$CONFIG_LUCI
           fi
           
           if [ "$TOTAL_LUCI" -eq 0 ]; then
@@ -605,9 +626,9 @@ jobs:
           fi
           echo "✅ 固件包含 $TOTAL_LUCI 个 LuCI 插件"
           echo ""
-          echo "=== 固件文件 ==="
+          echo "=== 固件文件列表 ==="
           find bin/targets -name "*.img*" -o -name "*.vmdk" 2>/dev/null | head -10
-          ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
+          ls -la bin/targets/x86/64/ 2>/dev/null | head -20 || echo "Target dir not found"
 
       - name: Rename and package firmware
         id: rename

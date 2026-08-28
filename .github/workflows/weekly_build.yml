@@ -189,7 +189,13 @@ jobs:
           echo "   feeds update exit code: $FEEDS_U_EXIT"
           tail -5 /tmp/feeds_update.log || true
           
-          echo "=== Step 5: Install feeds (180s timeout) ==="
+          echo "=== Step 5: Remove problematic packages BEFORE feeds install ==="
+          # 删除 mihomo-alpha 包目录，防止循环依赖错误
+          # mihomo-alpha 与 mihomo-meta 互斥，不能同时存在
+          rm -rf package/feeds/zuoxm/mihomo-alpha 2>/dev/null || true
+          echo "   🧹 Removed mihomo-alpha package directory"
+          
+          echo "=== Step 6: Install feeds (180s timeout) ==="
           FEEDS_COUNT=$(find package/feeds/luci -maxdepth 1 -type d 2>/dev/null | wc -l)
           echo "   Feeds luci-app directories: $FEEDS_COUNT"
           if [ "$FEEDS_COUNT" -lt 5 ]; then
@@ -317,7 +323,6 @@ jobs:
             echo "CONFIG_VERSIONOPT=y" >> .config
             echo "   ✅ Added CONFIG_VERSIONOPT=y"
           fi
-          BUILD_DATE_FULL=$(date +%Y%m%d%H%M)
           BUILD_DATE_SHORT=$(date +%Y%m%d)
           BUILD_CODE=$(date +%y.%m.%d)
           sed -i '/^CONFIG_VERSION_DIST=/d' .config
@@ -326,39 +331,10 @@ jobs:
           echo "CONFIG_VERSION_DIST=\"Z-ImmortalWrt\"" >> .config
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
-          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_FULL} by zuoxm | R${BUILD_CODE}"
-          # 用 sed 只替换 DISTRIB_DESCRIPTION 行，不覆盖整个文件
-          sed -i "s|^DISTRIB_DESCRIPTION=.*|DISTRIB_DESCRIPTION='%D %F by zuoxm | R%G'|" package/base-files/files/etc/openwrt_release
-          echo "   ✅ Modified openwrt_release: DISTRIB_DESCRIPTION='%D %F by zuoxm | R%G'"
-          # 同步更新 rootfs overlay 文件（使用实际编译时间，不用 % 占位符）
-          echo "DISTRIB_ID='ImmortalWrt'" > files/etc/openwrt_release
-          echo "DISTRIB_RELEASE='${BUILD_DATE_SHORT}'" >> files/etc/openwrt_release
-          echo "DISTRIB_REVISION='${BUILD_DATE_FULL}'" >> files/etc/openwrt_release
-          echo "DISTRIB_TARGET='%S/%A'" >> files/etc/openwrt_release
-          echo "DISTRIB_DESCRIPTION='Z-ImmortalWrt ${BUILD_DATE_FULL} by zuoxm | R${BUILD_CODE}'" >> files/etc/openwrt_release
-          echo "DISTRIB_TAINTS='%t'" >> files/etc/openwrt_release
-          echo "   ✅ Updated files/etc/openwrt_release with actual build time"
-          # 同步更新 os-release
-          echo 'NAME="Z-ImmortalWrt"' > files/usr/lib/os-release
-          echo "VERSION='${BUILD_DATE_FULL}'" >> files/usr/lib/os-release
-          echo 'ID="zxm"' >> files/usr/lib/os-release
-          echo 'ID_LIKE="lede openwrt"' >> files/usr/lib/os-release
-          echo "PRETTY_NAME='Z-ImmortalWrt ${BUILD_DATE_FULL} by zuoxm | R${BUILD_CODE}'" >> files/usr/lib/os-release
-          echo "VERSION_ID='${BUILD_CODE}'" >> files/usr/lib/os-release
-          echo 'HOME_URL="https://immortalwrt.org/"' >> files/usr/lib/os-release
-          echo 'BUG_URL="https://github.com/immortalwrt/immortalwrt/issues"' >> files/usr/lib/os-release
-          echo 'SUPPORT_URL="https://github.com/immortalwrt/immortalwrt/discussions"' >> files/usr/lib/os-release
-          echo 'FIRMWARE_URL="https://github.com/zxmlysxl/immortalwrt/releases"' >> files/usr/lib/os-release
-          echo "BUILD_ID='${BUILD_DATE_FULL}'" >> files/usr/lib/os-release
-          echo 'OPENWRT_BOARD="%S"' >> files/usr/lib/os-release
-          echo 'OPENWRT_ARCH="%A"' >> files/usr/lib/os-release
-          echo 'OPENWRT_TAINTS="%t"' >> files/usr/lib/os-release
-          echo 'OPENWRT_DEVICE_MANUFACTURER="ImmortalWrt"' >> files/usr/lib/os-release
-          echo 'OPENWRT_DEVICE_MANUFACTURER_URL="https://immortalwrt.org/"' >> files/usr/lib/os-release
-          echo 'OPENWRT_DEVICE_PRODUCT="Generic"' >> files/usr/lib/os-release
-          echo 'OPENWRT_DEVICE_REVISION="v0"' >> files/usr/lib/os-release
-          echo "OPENWRT_RELEASE='Z-ImmortalWrt ${BUILD_DATE_FULL} by zuoxm | R${BUILD_CODE}'" >> files/usr/lib/os-release
-          echo "   ✅ Updated files/usr/lib/os-release with actual build time"
+          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
+          # 修改 DISTRIB_DESCRIPTION 模板，加入 "by zuoxm | R" 前缀
+          echo "DISTRIB_DESCRIPTION='%D %F by zuoxm | R%G'" > package/base-files/files/etc/openwrt_release
+          echo "   ✅ Modified openwrt_release template: %D %F by zuoxm | R%G"
           
           echo "=== Step 8c: Enable openssh-server and dependencies for SFTP/PAM ==="
           sed -i 's/^# CONFIG_PACKAGE_openssh-server is not set$/CONFIG_PACKAGE_openssh-server=y/' .config
@@ -473,8 +449,8 @@ jobs:
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
           echo "   ✅ Version config re-applied after defconfig"
-          # 用 sed 只替换 DISTRIB_DESCRIPTION 行，不覆盖整个文件
-          sed -i "s|^DISTRIB_DESCRIPTION=.*|DISTRIB_DESCRIPTION='%D %F by zuoxm | R%G'|" package/base-files/files/etc/openwrt_release
+          # 同样确保 openwrt_release 在编译后重新写入
+          echo "DISTRIB_DESCRIPTION='%D %F by zuoxm | R%G'" > package/base-files/files/etc/openwrt_release
           echo "   ✅ openwrt_release template re-set"
           sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
           if ! grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then
@@ -552,6 +528,8 @@ jobs:
           echo "CPU cores: $(nproc)"
           
           echo "=== 第一步：编译工具链和包 ==="
+          # 使用 pipefail 确保 make 失败时步骤正确退出
+          set -o pipefail
           make -j$(nproc) V=s 2>&1 | tee /tmp/build.log | tail -300
           
           echo "=== 第二步：生成镜像（包含files目录） ==="
@@ -567,68 +545,23 @@ jobs:
       - name: Check output
         run: |
           echo "=== 检查编译产物 ==="
-          # 检查固件文件是否存在
-          IMG_FILES=$(find bin -name "*.img.gz" 2>/dev/null)
-          if [ -z "$IMG_FILES" ]; then
-            echo "❌ 未找到固件文件 .img.gz"
-            echo "=== bin 目录内容 ==="
-            find bin -type f 2>/dev/null | head -30
+          find bin/targets -name "*.img.gz" -ls 2>/dev/null || echo "No img.gz found"
+          MANIFEST_FILES=$(find bin/targets -name "*.manifest" 2>/dev/null)
+          if [ -z "$MANIFEST_FILES" ]; then
+            echo "❌ 未找到 manifest 文件"
             exit 1
           fi
-          echo "✅ 找到固件文件:"
-          echo "$IMG_FILES" | head -5
-          
-          echo ""
-          echo "=== bin 目录结构 ==="
-          find bin -maxdepth 4 -type d 2>/dev/null | head -30
-          
-          # 统计 LuCI 包数量（多种方式兜底）
-          TOTAL_LUCI=0
-          
-          # 方式1: Packages.manifest
-          MANIFEST_FILES=$(find bin -name "Packages.manifest" 2>/dev/null)
-          if [ -n "$MANIFEST_FILES" ]; then
-            echo "Found manifests:"
-            echo "$MANIFEST_FILES"
-            TOTAL_LUCI=$(cat $MANIFEST_FILES 2>/dev/null | grep -c "luci-app" || echo "0")
-            echo "LuCI packages in manifest: $TOTAL_LUCI"
-          fi
-          
-          # 方式2: APK index.json
-          if [ "$TOTAL_LUCI" -eq 0 ]; then
-            APK_INDEX=$(find bin -name "index.json" 2>/dev/null)
-            if [ -n "$APK_INDEX" ]; then
-              echo "Using APK index.json for package counting"
-              TOTAL_LUCI=$(grep -o '"name":"luci-app[^"]*"' $APK_INDEX 2>/dev/null | wc -l || echo "0")
-              echo "LuCI packages in APK index: $TOTAL_LUCI"
-            fi
-          fi
-          
-          # 方式3: 直接数 .apk 文件
-          if [ "$TOTAL_LUCI" -eq 0 ]; then
-            APK_COUNT=$(find bin -name "*.apk" 2>/dev/null | grep -c "luci-app" || echo "0")
-            if [ "$APK_COUNT" -gt 0 ]; then
-              echo "Found $APK_COUNT luci-app .apk files directly"
-              TOTAL_LUCI=$APK_COUNT
-            fi
-          fi
-          
-          # 方式4: 从 .config 验证（退而求其次）
-          if [ "$TOTAL_LUCI" -eq 0 ]; then
-            CONFIG_LUCI=$(grep -c '^CONFIG_PACKAGE_luci-app' .config 2>/dev/null || echo "0")
-            echo "⚠️ 无法从编译产物统计，使用 .config 计数: $CONFIG_LUCI 个 luci-app"
-            TOTAL_LUCI=$CONFIG_LUCI
-          fi
-          
+          # Use grep | wc -l to get total count across all manifests (safer than grep -c with multi-line output)
+          TOTAL_LUCI=$(cat $MANIFEST_FILES 2>/dev/null | grep -c "luci-app" || echo "0")
+          echo "LuCI packages in manifest: $TOTAL_LUCI"
           if [ "$TOTAL_LUCI" -eq 0 ]; then
             echo "❌ 严重错误：固件中没有 LuCI 插件！"
+            echo "   manifest 文件内容（前30行）："
+            cat $MANIFEST_FILES 2>/dev/null | head -30
             exit 1
           fi
           echo "✅ 固件包含 $TOTAL_LUCI 个 LuCI 插件"
-          echo ""
-          echo "=== 固件文件列表 ==="
-          find bin/targets -name "*.img*" -o -name "*.vmdk" 2>/dev/null | head -10
-          ls -la bin/targets/x86/64/ 2>/dev/null | head -20 || echo "Target dir not found"
+          ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
 
       - name: Rename and package firmware
         id: rename
@@ -699,6 +632,7 @@ jobs:
           files: |
             Z-ImmWrt-*.img.gz
             Z-ImmWrt-*.sha256
+            bin/targets/x86/64/*.manifest
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

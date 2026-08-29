@@ -205,7 +205,14 @@ jobs:
           fi
           (timeout 180 ./scripts/feeds install -a 2>&1 || true) | tee /tmp/feeds_install.log
           echo "   feeds install exit code: ${PIPESTATUS[0]}"
-
+          
+          echo "=== Step 6.5: Remove mihomo-alpha AFTER feeds install ==="
+          # feeds install 会重新安装所有包，必须在 install 后立即删除
+          rm -rf package/feeds/zuoxm/nikki/mihomo-alpha 2>/dev/null || true
+          rm -rf package/feeds/zuoxm/mihomo-alpha 2>/dev/null || true
+          sed -i "/^CONFIG_PACKAGE_mihomo-alpha/d" .config
+          echo "   🧹 Removed mihomo-alpha (config + package dirs)"
+          
           echo "=== Step 7: Restore luci-app packages ==="
           # Restore luci-app packages: handle both # is not set AND completely missing lines
           while IFS= read -r pkg; do
@@ -468,6 +475,12 @@ jobs:
           echo "   CONFIG_VERSIONOPT: $(grep '^CONFIG_VERSIONOPT=' .config || echo 'NOT SET')"
           echo "   openssh-server: $(grep '^CONFIG_PACKAGE_openssh-server=' .config || echo 'NOT SET')"
 
+          echo "=== Step 10.3: Remove mihomo-alpha BEFORE oldconfig ==="
+          # feeds install 重新安装了 mihomo-alpha,必须在 oldconfig 前删除
+          sed -i "/^CONFIG_PACKAGE_mihomo-alpha/d" .config
+          rm -rf package/feeds/zuoxm/mihomo-alpha 2>/dev/null || true
+          echo "   🧹 Removed mihomo-alpha (config + package dir)"
+
           echo "=== Step 10.5: Resolve dependencies for restored packages (AFTER all restores) ==="
           # 在所有 restore 完成后调用 oldconfig,此时 .config 已有 luci-app=y 等条目
           # oldconfig 会为这些显式启用的包添加必要的依赖(如 libjson-c、libubus 等)
@@ -476,13 +489,13 @@ jobs:
           echo "   ✅ Dependencies resolved"
 
           echo "=== Step 11: Final cleanup - remove problematic packages ==="
-          # 这些包有递归依赖或编译问题，每次都清理一遍
-          # 显式标记为"不启用"，防止后续 make 重新添加
+          # 这些包有递归依赖或编译问题,每次都清理一遍
+          # 显式标记为"不启用",防止后续 make 重新添加
           for pkg in openvswitch ovsd; do
             sed -i "/^CONFIG_PACKAGE_.*${pkg}/d" .config
             echo "   🧹 Removed: $pkg"
           done
-          # mihomo-alpha：删除配置文件 AND 包目录，防止循环依赖
+          # mihomo-alpha:删除配置文件 AND 包目录,防止循环依赖
           sed -i "/^CONFIG_PACKAGE_mihomo-alpha/d" .config
           rm -rf package/feeds/zuoxm/mihomo-alpha 2>/dev/null || true
           echo "   🧹 Removed: mihomo-alpha (config + package dir)"

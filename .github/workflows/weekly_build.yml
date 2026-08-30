@@ -547,12 +547,12 @@ jobs:
           echo "=== 第一步:编译工具链和包 ==="
           # 使用 pipefail 确保 make 失败时步骤正确退出
           set -o pipefail
-          make -j$(nproc) V=s 2>&1 | tee /tmp/build.log | tail -300
+          make -j$(nproc) V=s 2>&1 | tee /tmp/build.log
 
           echo "=== 第二步:生成镜像(包含files目录) ==="
           # OpenWrt automatically includes files/ from source root into rootfs
           # Remove the redundant copy step - OpenWrt handles it
-          make target/install 2>&1 | tee -a /tmp/build.log | tail -100
+          make target/install 2>&1 | tee -a /tmp/build.log
 
           echo "=== 编译结束 ==="
           echo "=== 检查 bin 目录 ==="

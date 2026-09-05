@@ -106,13 +106,6 @@ jobs:
             echo "   ⚠️ .config 不存在,将在 Initialize feeds 步骤中由 make defconfig 生成"
           fi
 
-      - name: Sync with upstream (optional)
-        if: github.event.inputs.sync_upstream == 'true'
-        run: |
-          echo "=== 同步上游代码 ==="
-          git remote add upstream https://github.com/immortalwrt/immortalwrt.git 2>/dev/null || true
-          git fetch upstream master --tags --depth=2000 && git merge --allow-unrelated-histories upstream/master --no-edit
-          echo "✅ 上游同步完成"
 
       - name: Verify files directory
         run: |

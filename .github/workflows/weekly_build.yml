@@ -573,6 +573,14 @@ jobs:
           echo "✅ 固件包含 $TOTAL_LUCI 个 LuCI 插件"
           ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
 
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: /tmp/build.log
+          retention-days: 7
+
       - name: Rename and package firmware
         id: rename
         run: |

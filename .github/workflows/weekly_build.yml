@@ -353,8 +353,12 @@ jobs:
 
 
           # Replace FIXME placeholders with actual build date values in os-release and openwrt_release
-          sed -i 's/FIXME_VERSION/${BUILD_DATE_SHORT}/g; s/FIXME_CODE/${BUILD_CODE}/g; s/FIXME_BOARD/${TARGET_BOARD}/g' package/base-files/files/usr/lib/os-release
-          sed -i 's/FIXME_VERSION/${BUILD_DATE_SHORT}/g; s/FIXME_CODE/${BUILD_CODE}/g; s/FIXME_BOARD/${TARGET_BOARD}/g' package/base-files/files/etc/openwrt_release
+          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/usr/lib/os-release
+          cat package/base-files/files/usr/lib/os-release | head -3
+          cat package/base-files/files/etc/openwrt_release | head -3
+          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/etc/openwrt_release
+          cat package/base-files/files/usr/lib/os-release | head -3
+          cat package/base-files/files/etc/openwrt_release | head -3
           echo "   ✅ Version strings set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
 
 
@@ -474,8 +478,12 @@ jobs:
           # 同样确保 openwrt_release 在编译后重新写入
 
           # Replace FIXME placeholders after defconfig
-          sed -i 's/FIXME_VERSION/${BUILD_DATE_SHORT}/g; s/FIXME_CODE/${BUILD_CODE}/g; s/FIXME_BOARD/${TARGET_BOARD}/g' package/base-files/files/usr/lib/os-release
-          sed -i 's/FIXME_VERSION/${BUILD_DATE_SHORT}/g; s/FIXME_CODE/${BUILD_CODE}/g; s/FIXME_BOARD/${TARGET_BOARD}/g' package/base-files/files/etc/openwrt_release
+          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/usr/lib/os-release
+          cat package/base-files/files/usr/lib/os-release | head -3
+          cat package/base-files/files/etc/openwrt_release | head -3
+          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/etc/openwrt_release
+          cat package/base-files/files/usr/lib/os-release | head -3
+          cat package/base-files/files/etc/openwrt_release | head -3
           echo "   ✅ Version strings re-applied after defconfig"
           sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
           if ! grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then

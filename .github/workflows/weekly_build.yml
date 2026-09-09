@@ -342,6 +342,7 @@ jobs:
           fi
           BUILD_DATE_SHORT=$(date +%Y%m%d)
           BUILD_CODE=$(date +%y.%m.%d)
+          TARGET_BOARD="x86/64"
           sed -i '/^CONFIG_VERSION_DIST=/d' .config
           sed -i '/^CONFIG_VERSION_NUMBER=/d' .config
           sed -i '/^CONFIG_VERSION_CODE=/d' .config
@@ -349,19 +350,12 @@ jobs:
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
           echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
-          # 修改 DISTRIB_DESCRIPTION 模板,加入 "by zuoxm | R" 前缀
-          # Patch include/version.mk: replace %F (shell date) with CONFIG_VERSION_NUMBER so LuCI shows build date
-          sed -i "s|%F,\$(call sed_escape,\$(shell date +%Y%m%d%H%M)),|%F,\$(call sed_escape,\$(CONFIG_VERSION_NUMBER)),|" include/version.mk
-          echo "   ✅ Patched include/version.mk: %F → CONFIG_VERSION_NUMBER"
 
-          # Update os-release: set PRETTY_NAME and OPENWRT_RELEASE to correct format
-          sed -i "s|PRETTY_NAME=\".*\"|PRETTY_NAME=\"Z-ImmortalWrt \${BUILD_DATE_SHORT} by zuoxm | R\${BUILD_CODE}\"|" package/base-files/files/usr/lib/os-release
-          sed -i "s|OPENWRT_RELEASE=\".*\"|OPENWRT_RELEASE=\"Z-ImmortalWrt \${BUILD_DATE_SHORT} by zuoxm | R\${BUILD_CODE}\"|" package/base-files/files/usr/lib/os-release
-          echo "   ✅ Updated os-release: PRETTY_NAME and OPENWRT_RELEASE"
 
-          echo "DISTRIB_DESCRIPTION='Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}'" > package/base-files/files/etc/openwrt_release
-          echo "   ✅ Modified openwrt_release template: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
-          sed -i "s|%F,\$(call sed_escape,\$(shell date +%Y%m%d%H%M)),|%F,\$(call sed_escape,\$(CONFIG_VERSION_NUMBER)),|" include/version.mk
+          # Replace FIXME placeholders with actual build date values in os-release and openwrt_release
+          sed -i 's/FIXME_VERSION/${BUILD_DATE_SHORT}/g; s/FIXME_CODE/${BUILD_CODE}/g; s/FIXME_BOARD/${TARGET_BOARD}/g' package/base-files/files/usr/lib/os-release
+          sed -i 's/FIXME_VERSION/${BUILD_DATE_SHORT}/g; s/FIXME_CODE/${BUILD_CODE}/g; s/FIXME_BOARD/${TARGET_BOARD}/g' package/base-files/files/etc/openwrt_release
+          echo "   ✅ Version strings set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
 
 
           echo "=== Step 8c: Enable openssh-server and dependencies for SFTP/PAM ==="
@@ -478,13 +472,11 @@ jobs:
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
           echo "   ✅ Version config re-applied after defconfig"
           # 同样确保 openwrt_release 在编译后重新写入
-          echo "DISTRIB_DESCRIPTION='Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}'" > package/base-files/files/etc/openwrt_release
-          sed -i "s|%F,\$(call sed_escape,\$(shell date +%Y%m%d%H%M)),|%F,\$(call sed_escape,\$(CONFIG_VERSION_NUMBER)),|" include/version.mk
-          sed -i "s|PRETTY_NAME=\".*\"|PRETTY_NAME=\"Z-ImmortalWrt \${BUILD_DATE_SHORT} by zuoxm | R\${BUILD_CODE}\"|" package/base-files/files/usr/lib/os-release
-          sed -i "s|OPENWRT_RELEASE=\".*\"|OPENWRT_RELEASE=\"Z-ImmortalWrt \${BUILD_DATE_SHORT} by zuoxm | R\${BUILD_CODE}\"|" package/base-files/files/usr/lib/os-release
-          echo "   ✅ Updated os-release again"
 
-          echo "   ✅ openwrt_release template re-set"
+          # Replace FIXME placeholders after defconfig
+          sed -i 's/FIXME_VERSION/${BUILD_DATE_SHORT}/g; s/FIXME_CODE/${BUILD_CODE}/g; s/FIXME_BOARD/${TARGET_BOARD}/g' package/base-files/files/usr/lib/os-release
+          sed -i 's/FIXME_VERSION/${BUILD_DATE_SHORT}/g; s/FIXME_CODE/${BUILD_CODE}/g; s/FIXME_BOARD/${TARGET_BOARD}/g' package/base-files/files/etc/openwrt_release
+          echo "   ✅ Version strings re-applied after defconfig"
           sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
           if ! grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then
             echo "CONFIG_PACKAGE_shadow-utils=y" >> .config

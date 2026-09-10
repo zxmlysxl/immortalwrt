@@ -553,6 +553,12 @@ jobs:
           cat package/base-files/files/usr/lib/os-release | head -3
           cat package/base-files/files/etc/openwrt_release | head -3
           echo "   ✅ Version strings fixed before compilation"
+          # Also patch root files/ directory which overrides base-files in the rootfs
+          mkdir -p files/etc
+          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" files/etc/openwrt_release
+          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" files/usr/lib/os-release
+          echo "Z-ImmortalWrt $(date +%Y%m%d%H%M) by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
+          echo "   ✅ Root files/ version also patched"
 
       - name: Prepare config
         run: |

@@ -547,6 +547,13 @@ jobs:
 
           echo "   ✅ Config ready - no additional defconfig to avoid overwriting restored packages"
 
+          echo "=== Final fix: Replace FIXME placeholders before compilation ==="
+          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/usr/lib/os-release
+          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/etc/openwrt_release
+          cat package/base-files/files/usr/lib/os-release | head -3
+          cat package/base-files/files/etc/openwrt_release | head -3
+          echo "   ✅ Version strings fixed before compilation"
+
       - name: Prepare config
         run: |
           echo "=== 验证配置完整性 ==="

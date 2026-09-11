@@ -353,10 +353,10 @@ jobs:
 
 
           # Replace FIXME placeholders with actual build date values in os-release and openwrt_release
-          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/usr/lib/os-release
+          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/usr/lib/os-release
           cat package/base-files/files/usr/lib/os-release | head -3
           cat package/base-files/files/etc/openwrt_release | head -3
-          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/etc/openwrt_release
+          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/etc/openwrt_release
           cat package/base-files/files/usr/lib/os-release | head -3
           cat package/base-files/files/etc/openwrt_release | head -3
           echo "   ✅ Version strings set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
@@ -478,10 +478,10 @@ jobs:
           # 同样确保 openwrt_release 在编译后重新写入
 
           # Replace FIXME placeholders after defconfig
-          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/usr/lib/os-release
+          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/usr/lib/os-release
           cat package/base-files/files/usr/lib/os-release | head -3
           cat package/base-files/files/etc/openwrt_release | head -3
-          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/etc/openwrt_release
+          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/etc/openwrt_release
           cat package/base-files/files/usr/lib/os-release | head -3
           cat package/base-files/files/etc/openwrt_release | head -3
           echo "   ✅ Version strings re-applied after defconfig"
@@ -548,15 +548,15 @@ jobs:
           echo "   ✅ Config ready - no additional defconfig to avoid overwriting restored packages"
 
           echo "=== Final fix: Replace FIXME placeholders before compilation ==="
-          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/usr/lib/os-release
-          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" package/base-files/files/etc/openwrt_release
+          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/usr/lib/os-release
+          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/etc/openwrt_release
           cat package/base-files/files/usr/lib/os-release | head -3
           cat package/base-files/files/etc/openwrt_release | head -3
           echo "   ✅ Version strings fixed before compilation"
           # Also patch root files/ directory which overrides base-files in the rootfs
           mkdir -p files/etc
-          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" files/etc/openwrt_release
-          sed -i "s/FIXME_VERSION/$(date +%Y%m%d)/g; s/FIXME_CODE/$(date +%y.%m.%d)/g; s/FIXME_BOARD/x86\/64/g" files/usr/lib/os-release
+          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" files/etc/openwrt_release
+          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" files/usr/lib/os-release
           echo "Z-ImmortalWrt $(date +%Y%m%d%H%M) by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
           echo "   ✅ Root files/ version also patched"
 

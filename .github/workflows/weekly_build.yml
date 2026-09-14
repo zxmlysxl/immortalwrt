@@ -335,10 +335,12 @@ jobs:
           sed -i '/^CONFIG_VERSION_DIST=/d' .config
           sed -i '/^CONFIG_VERSION_NUMBER=/d' .config
           sed -i '/^CONFIG_VERSION_CODE=/d' .config
+          sed -i '/^CONFIG_VERSION_MANUFACTURER=/d' .config
           echo "CONFIG_VERSION_DIST=\"Z-ImmortalWrt\"" >> .config
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
-          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
+          echo "CONFIG_VERSION_MANUFACTURER=\"x86/64\"" >> .config
+          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE} (manufacturer=x86/64)"
           # 修改 DISTRIB_DESCRIPTION 模板,加入 "by zuoxm | R" 前缀
           echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%G'" > package/base-files/files/etc/openwrt_release
           echo "   ✅ Modified openwrt_release template: %D %F by zuoxm | R%G"
@@ -452,13 +454,15 @@ jobs:
           sed -i '/^CONFIG_VERSION_DIST=/d' .config
           sed -i '/^CONFIG_VERSION_NUMBER=/d' .config
           sed -i '/^CONFIG_VERSION_CODE=/d' .config
+          sed -i '/^CONFIG_VERSION_MANUFACTURER=/d' .config
           echo "CONFIG_VERSION_DIST=\"Z-ImmortalWrt\"" >> .config
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
-          echo "   ✅ Version config re-applied after defconfig"
+          echo "CONFIG_VERSION_MANUFACTURER=\"x86/64\"" >> .config
+          echo "   ✅ Version config re-applied after defconfig (manufacturer=x86/64)"
           # 同样确保 openwrt_release 在编译后重新写入
           echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%G'" > package/base-files/files/etc/openwrt_release
-          echo "   ✅ openwrt_release template re-set"
+          echo "   ✅ openwrt_release template re-set
           sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
           if ! grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then
             echo "CONFIG_PACKAGE_shadow-utils=y" >> .config

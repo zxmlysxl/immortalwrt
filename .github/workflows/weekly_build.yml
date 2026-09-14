@@ -106,6 +106,13 @@ jobs:
             echo "   ⚠️ .config 不存在,将在 Initialize feeds 步骤中由 make defconfig 生成"
           fi
 
+      - name: Sync with upstream (optional)
+        if: github.event.inputs.sync_upstream == 'true'
+        run: |
+          echo "=== 同步上游代码 ==="
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git 2>/dev/null || true
+          git fetch upstream master --tags --depth=2000 && git merge --allow-unrelated-histories upstream/master --no-edit
+          echo "✅ 上游同步完成"
 
       - name: Verify files directory
         run: |
@@ -176,10 +183,6 @@ jobs:
           echo "   ✅ Problematic packages removed"
 
           set +e
-          echo "=== Step 3b: Create feeds.conf from feeds.conf.default ==="
-          cp feeds.conf.default feeds.conf
-          echo "   ✅ Created feeds.conf from feeds.conf.default"
-
           echo "=== Step 4: Update feeds (120s timeout) ==="
           (timeout 120 ./scripts/feeds update -a 2>&1 || true) | tee /tmp/feeds_update.log
           FEEDS_U_EXIT=${PIPESTATUS[0]}
@@ -210,19 +213,6 @@ jobs:
           sed -i "/^CONFIG_PACKAGE_mihomo-alpha/d" .config
           echo "   🧹 Removed mihomo-alpha (config + package dirs)"
           
-          echo "=== Step 6.6: Verify and install zxm custom packages ==="
-          # Check if zxm packages are actually installed in package/feeds/zuoxm
-          for pkg in luci-app-momo momo luci-app-advancedplus luci-app-eqosplus luci-app-wrtbwmon luci-app-chatgpt-web luci-app-ota luci-app-timecontrol; do
-            PKG_DIR="package/feeds/zuoxm/${pkg}"
-            if [ -d "$PKG_DIR" ]; then
-              echo "   ✅ Found: $pkg"
-            else
-              echo "   ❌ Missing: $pkg - installing via feeds..."
-              ./scripts/feeds install ${pkg} 2>&1 || true
-            fi
-          done
-          echo "   ✅ zxm packages verified"
-
           echo "=== Step 7: Restore luci-app packages ==="
           # Restore luci-app packages: handle both # is not set AND completely missing lines
           while IFS= read -r pkg; do
@@ -342,7 +332,6 @@ jobs:
           fi
           BUILD_DATE_SHORT=$(date +%Y%m%d)
           BUILD_CODE=$(date +%y.%m.%d)
-          TARGET_BOARD="x86/64"
           sed -i '/^CONFIG_VERSION_DIST=/d' .config
           sed -i '/^CONFIG_VERSION_NUMBER=/d' .config
           sed -i '/^CONFIG_VERSION_CODE=/d' .config
@@ -350,17 +339,9 @@ jobs:
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
           echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
-
-
-          # Replace FIXME placeholders with actual build date values in os-release and openwrt_release
-          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/usr/lib/os-release
-          cat package/base-files/files/usr/lib/os-release | head -3
-          cat package/base-files/files/etc/openwrt_release | head -3
-          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/etc/openwrt_release
-          cat package/base-files/files/usr/lib/os-release | head -3
-          cat package/base-files/files/etc/openwrt_release | head -3
-          echo "   ✅ Version strings set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
-
+          # 修改 DISTRIB_DESCRIPTION 模板,加入 "by zuoxm | R" 前缀
+          echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%G'" > package/base-files/files/etc/openwrt_release
+          echo "   ✅ Modified openwrt_release template: %D %F by zuoxm | R%G"
 
           echo "=== Step 8c: Enable openssh-server and dependencies for SFTP/PAM ==="
           sed -i 's/^# CONFIG_PACKAGE_openssh-server is not set$/CONFIG_PACKAGE_openssh-server=y/' .config
@@ -476,15 +457,8 @@ jobs:
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
           echo "   ✅ Version config re-applied after defconfig"
           # 同样确保 openwrt_release 在编译后重新写入
-
-          # Replace FIXME placeholders after defconfig
-          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/usr/lib/os-release
-          cat package/base-files/files/usr/lib/os-release | head -3
-          cat package/base-files/files/etc/openwrt_release | head -3
-          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/etc/openwrt_release
-          cat package/base-files/files/usr/lib/os-release | head -3
-          cat package/base-files/files/etc/openwrt_release | head -3
-          echo "   ✅ Version strings re-applied after defconfig"
+          echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%G'" > package/base-files/files/etc/openwrt_release
+          echo "   ✅ openwrt_release template re-set"
           sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
           if ! grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then
             echo "CONFIG_PACKAGE_shadow-utils=y" >> .config
@@ -526,6 +500,14 @@ jobs:
           rm -rf package/feeds/zuoxm/mihomo-alpha 2>/dev/null || true
           echo "   🧹 Removed: mihomo-alpha (config + package dir)"
 
+          # 删除用户指定的5个插件:plugins/attendedsysupgrade/chatgpt-web/momo/usage
+          for rmpkg in plugins attendedsysupgrade chatgpt-web momo usage; do
+            sed -i "/^CONFIG_PACKAGE_${rmpkg}/d" .config
+            rm -rf package/feeds/zuoxm/${rmpkg} 2>/dev/null || true
+            rm -rf package/feeds/zuoxm/luci-app-${rmpkg} 2>/dev/null || true
+            echo "   🧹 Removed: ${rmpkg}"
+          done
+
           # shadowsocksr-libev:先删配置行,再显式标记为不启用
           for pkg in shadowsocksr-libev-ssr-local shadowsocksr-libev-ssr-redir shadowsocksr-libev-ssr-server shadowsocksr-libev-ssr-check shadowsocksr-libev-ssr-nat; do
             sed -i "/CONFIG_PACKAGE_${pkg}/d" .config
@@ -546,19 +528,6 @@ jobs:
           echo "   🧹 Removed stale kernel patches (742-*)"
 
           echo "   ✅ Config ready - no additional defconfig to avoid overwriting restored packages"
-
-          echo "=== Final fix: Replace FIXME placeholders before compilation ==="
-          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/usr/lib/os-release
-          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" package/base-files/files/etc/openwrt_release
-          cat package/base-files/files/usr/lib/os-release | head -3
-          cat package/base-files/files/etc/openwrt_release | head -3
-          echo "   ✅ Version strings fixed before compilation"
-          # Also patch root files/ directory which overrides base-files in the rootfs
-          mkdir -p files/etc
-          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" files/etc/openwrt_release
-          sed -i "s/%F/$(date +%Y%m%d)/g; s/%G/$(date +%y.%m.%d)/g" files/usr/lib/os-release
-          echo "Z-ImmortalWrt $(date +%Y%m%d%H%M) by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
-          echo "   ✅ Root files/ version also patched"
 
       - name: Prepare config
         run: |
@@ -586,12 +555,12 @@ jobs:
           echo "=== 第一步:编译工具链和包 ==="
           # 使用 pipefail 确保 make 失败时步骤正确退出
           set -o pipefail
-          make -j$(nproc) V=s 2>&1 | tee /tmp/build.log
+          make -j$(nproc) V=s 2>&1 | tee /tmp/build.log | tail -300
 
           echo "=== 第二步:生成镜像(包含files目录) ==="
           # OpenWrt automatically includes files/ from source root into rootfs
           # Remove the redundant copy step - OpenWrt handles it
-          make target/install 2>&1 | tee -a /tmp/build.log
+          make target/install 2>&1 | tee -a /tmp/build.log | tail -100
 
           echo "=== 编译结束 ==="
           echo "=== 检查 bin 目录 ==="
@@ -618,14 +587,6 @@ jobs:
           fi
           echo "✅ 固件包含 $TOTAL_LUCI 个 LuCI 插件"
           ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
-
-      - name: Upload build log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: /tmp/build.log
-          retention-days: 7
 
       - name: Rename and package firmware
         id: rename
@@ -715,7 +676,7 @@ jobs:
           # 仅收集来自 zxm_immortalwrt_packages feed 的包(feeds/zuoxm/ 下的各子目录)
           # 这些包的源码目录在 feeds/zuoxm/{subdir}/,通过编译输出文件名可识别来源
           # 定义来自 zxm_immortalwrt_packages 的包名前缀(不含 feeds 路径前缀)
-          ZXM_PREFIXES="luci-app-adguardhome luci-app-advancedplus luci-app-chatgpt-web luci-app-eqosplus luci-app-kucat-config luci-app-momo luci-app-netdata luci-app-netwizard luci-app-openclash luci-app-ota luci-app-passwall luci-app-passwall2 luci-app-poweroffdevice luci-app-tailscale luci-app-taskplan luci-app-timecontrol luci-app-wechatpush luci-app-wolplus luci-app-wrtbwmon luci-app-znetcontrol luci-theme-kucat luci-lib-taskd luci-lib-xterm taskd bandix easytier lucky momo netspeedtest nikki watchdog wrtbwmon chinadns-ng geoview hysteria ipt2socks microsocks naiveproxy simple-obfs shadowsocks-rust shadow-tls sing-box tcping trojan-plus tuic-client v2ray-plugin xray-plugin xray-core dns2socks"
+          ZXM_PREFIXES="luci-app-adguardhome luci-app-advancedplus luci-app-eqosplus luci-app-kucat-config luci-app-netdata luci-app-netwizard luci-app-openclash luci-app-ota luci-app-passwall luci-app-passwall2 luci-app-poweroffdevice luci-app-tailscale luci-app-taskplan luci-app-timecontrol luci-app-wechatpush luci-app-wolplus luci-app-wrtbwmon luci-app-znetcontrol luci-theme-kucat luci-lib-taskd luci-lib-xterm taskd bandix easytier lucky netspeedtest nikki watchdog wrtbwmon chinadns-ng geoview hysteria ipt2socks microsocks naiveproxy simple-obfs shadowsocks-rust shadow-tls sing-box tcping trojan-plus tuic-client v2ray-plugin xray-plugin xray-core dns2socks"
 
           echo "=== 扫描 bin/packages 和 bin/targets 中的 APK/IPK 文件 ==="
           for dir in bin/packages/x86_64 bin/targets/x86/64; do

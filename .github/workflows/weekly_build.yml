@@ -136,7 +136,7 @@ jobs:
         run: |
           echo "=== 更新 compile_info ==="
           BUILD_DATE=$(date +%Y%m%d%H%M)
-          echo "Z-ImmortalWrt ${BUILD_DATE} by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
+          echo "Z-ImmortalWrt ${BUILD_DATE} by zuoxm | R$(date +%y.%m)" > files/etc/compile_info
           echo "   Build info: $(cat files/etc/compile_info)"
 
       - name: Initialize feeds
@@ -331,7 +331,7 @@ jobs:
             echo "   ✅ Added CONFIG_VERSIONOPT=y"
           fi
           BUILD_DATE_SHORT=$(date +%Y%m%d)
-          BUILD_CODE=$(date +%y.%m.%d)
+          BUILD_CODE=$(date +%y.%m)
           sed -i '/^CONFIG_VERSION_DIST=/d' .config
           sed -i '/^CONFIG_VERSION_NUMBER=/d' .config
           sed -i '/^CONFIG_VERSION_CODE=/d' .config
@@ -342,8 +342,9 @@ jobs:
           echo "CONFIG_VERSION_MANUFACTURER=\"x86/64\"" >> .config
           echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE} (manufacturer=x86/64)"
           # 修改 DISTRIB_DESCRIPTION 模板,加入 "by zuoxm | R" 前缀
-          echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%G'" > package/base-files/files/etc/openwrt_release
-          echo "   ✅ Modified openwrt_release template: %D %F by zuoxm | R%G"
+          echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
+          sed -i 's|%%S|x86/64|g' package/base-files/files/etc/openwrt_release
+          echo "   ✅ Modified openwrt_release template: %D %V by zuoxm | R%C (platform=x86/64)"
 
           echo "=== Step 8c: Enable openssh-server and dependencies for SFTP/PAM ==="
           sed -i 's/^# CONFIG_PACKAGE_openssh-server is not set$/CONFIG_PACKAGE_openssh-server=y/' .config
@@ -461,8 +462,9 @@ jobs:
           echo "CONFIG_VERSION_MANUFACTURER=\"x86/64\"" >> .config
           echo "   ✅ Version config re-applied after defconfig (manufacturer=x86/64)"
           # 同样确保 openwrt_release 在编译后重新写入
-          echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%G'" > package/base-files/files/etc/openwrt_release
-          echo "   ✅ openwrt_release template re-set
+          echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
+          echo "   ✅ openwrt_release template re-set (platform=x86/64)"
+          sed -i 's|%%S|x86/64|g' package/base-files/files/etc/openwrt_release
           sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
           if ! grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then
             echo "CONFIG_PACKAGE_shadow-utils=y" >> .config

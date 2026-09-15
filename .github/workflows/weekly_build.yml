@@ -553,15 +553,25 @@ jobs:
       - name: Download toolchain
         run: make download -j$(nproc)
 
+      - name: Prepare build environment
+        run: |
+          echo "=== 添加 swap 避免 OOM ==="
+          sudo fallocate -l 4G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+          echo "MAKEFLAGS=-j2" >> $GITHUB_ENV
+          echo "=== 准备完成，使用 -j2 避免 OOM ==="
+
       - name: Compile firmware
         run: |
           echo "=== 开始编译 ==="
           echo "CPU cores: $(nproc)"
-
           echo "=== 第一步:编译工具链和包 ==="
           # 使用 pipefail 确保 make 失败时步骤正确退出
           set -o pipefail
-          make -j$(nproc) V=s 2>&1 | tee /tmp/build.log | tail -300
+          make -j2 V=s 2>&1 | tee /tmp/build.log | tail -300
 
           echo "=== 第二步:生成镜像(包含files目录) ==="
           # OpenWrt automatically includes files/ from source root into rootfs

@@ -506,8 +506,9 @@ jobs:
           rm -rf package/feeds/zuoxm/mihomo-alpha 2>/dev/null || true
           echo "   🧹 Removed: mihomo-alpha (config + package dir)"
 
-          # 删除用户指定的5个插件:plugins/attendedsysupgrade/chatgpt-web/momo/usage
-          for rmpkg in plugins attendedsysupgrade attendedsysupgrade-common chatgpt-web momo usage; do
+          # 删除用户指定的插件: chatgpt-web momo
+          # 注意: attendedsysupgrade 和 usage 已禁用，不编译
+          for rmpkg in plugins chatgpt-web momo; do
             sed -i "/^CONFIG_PACKAGE_${rmpkg}/d" .config
             rm -rf package/feeds/zuoxm/${rmpkg} 2>/dev/null || true
             rm -rf package/feeds/zuoxm/luci-app-${rmpkg} 2>/dev/null || true

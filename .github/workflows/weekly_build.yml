@@ -339,12 +339,12 @@ jobs:
           echo "CONFIG_VERSION_DIST=\"Z-ImmortalWrt\"" >> .config
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
-          echo "CONFIG_VERSION_MANUFACTURER=\"x86/64\"" >> .config
-          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE} (manufacturer=x86/64)"
+          echo "CONFIG_VERSION_MANUFACTURER=\"x86_64\"" >> .config
+          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE} (manufacturer=x86_64)"
           # 修改 DISTRIB_DESCRIPTION 模板,加入 "by zuoxm | R" 前缀
           echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
-          sed -i 's|%%S|x86/64|g' package/base-files/files/etc/openwrt_release
-          echo "   ✅ Modified openwrt_release template: %D %V by zuoxm | R%C (platform=x86/64)"
+          sed -i 's|%%S|x86_64|g' package/base-files/files/etc/openwrt_release
+          echo "   ✅ Modified openwrt_release template: %D %V by zuoxm | R%C (platform=x86_64)"
 
           echo "=== Step 8c: Enable openssh-server and dependencies for SFTP/PAM ==="
           sed -i 's/^# CONFIG_PACKAGE_openssh-server is not set$/CONFIG_PACKAGE_openssh-server=y/' .config
@@ -459,12 +459,12 @@ jobs:
           echo "CONFIG_VERSION_DIST=\"Z-ImmortalWrt\"" >> .config
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
-          echo "CONFIG_VERSION_MANUFACTURER=\"x86/64\"" >> .config
-          echo "   ✅ Version config re-applied after defconfig (manufacturer=x86/64)"
+          echo "CONFIG_VERSION_MANUFACTURER=\"x86_64\"" >> .config
+          echo "   ✅ Version config re-applied after defconfig (manufacturer=x86_64)"
           # 同样确保 openwrt_release 在编译后重新写入
           echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
-          echo "   ✅ openwrt_release template re-set (platform=x86/64)"
-          sed -i 's|%%S|x86/64|g' package/base-files/files/etc/openwrt_release
+          echo "   ✅ openwrt_release template re-set (platform=x86_64)"
+          sed -i 's|%%S|x86_64|g' package/base-files/files/etc/openwrt_release
           sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
           if ! grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then
             echo "CONFIG_PACKAGE_shadow-utils=y" >> .config
@@ -508,7 +508,7 @@ jobs:
 
           # 删除用户指定的插件: chatgpt-web momo
           # 注意: attendedsysupgrade 和 usage 已禁用，不编译
-          for rmpkg in plugins chatgpt-web momo; do
+          for rmpkg in plugins chatgpt-web momo u; do
             sed -i "/^CONFIG_PACKAGE_${rmpkg}/d" .config
             rm -rf package/feeds/zuoxm/${rmpkg} 2>/dev/null || true
             rm -rf package/feeds/zuoxm/luci-app-${rmpkg} 2>/dev/null || true
@@ -572,7 +572,7 @@ jobs:
 
           echo "=== 编译结束 ==="
           echo "=== 检查 bin 目录 ==="
-          ls -la bin/targets/x86/64/ 2>/dev/null || echo "targets dir not found"
+          ls -la bin/targets/x86_64/ 2>/dev/null || echo "targets dir not found"
           find bin -name "*.img*" -o -name "*.vmdk*" -o -name "*.ext4*" 2>/dev/null | head -20 || echo "No image files"
 
       - name: Check output
@@ -594,7 +594,7 @@ jobs:
             exit 1
           fi
           echo "✅ 固件包含 $TOTAL_LUCI 个 LuCI 插件"
-          ls -la bin/targets/x86/64/ 2>/dev/null || echo "Target dir not found"
+          ls -la bin/targets/x86_64/ 2>/dev/null || echo "Target dir not found"
 
       - name: Rename and package firmware
         id: rename
@@ -665,7 +665,7 @@ jobs:
           files: |
             Z-ImmWrt-*.img.gz
             Z-ImmWrt-*.sha256
-            bin/targets/x86/64/*.manifest
+            bin/targets/x86_64/*.manifest
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -687,7 +687,7 @@ jobs:
           ZXM_PREFIXES="luci-app-adguardhome luci-app-advancedplus luci-app-eqosplus luci-app-kucat-config luci-app-netdata luci-app-netwizard luci-app-openclash luci-app-ota luci-app-passwall luci-app-passwall2 luci-app-poweroffdevice luci-app-tailscale luci-app-taskplan luci-app-timecontrol luci-app-wechatpush luci-app-wolplus luci-app-wrtbwmon luci-app-znetcontrol luci-theme-kucat luci-lib-taskd luci-lib-xterm taskd bandix easytier lucky netspeedtest nikki watchdog wrtbwmon chinadns-ng geoview hysteria ipt2socks microsocks naiveproxy simple-obfs shadowsocks-rust shadow-tls sing-box tcping trojan-plus tuic-client v2ray-plugin xray-plugin xray-core dns2socks"
 
           echo "=== 扫描 bin/packages 和 bin/targets 中的 APK/IPK 文件 ==="
-          for dir in bin/packages/x86_64 bin/targets/x86/64; do
+          for dir in bin/packages/x86_64 bin/targets/x86_64; do
             find "$dir" \( -name "*.apk" -o -name "*.ipk" \) -type f 2>/dev/null | while read f; do
               PKG_NAME=$(basename "$f" | sed 's/_[0-9].*//')
               for prefix in $ZXM_PREFIXES; do

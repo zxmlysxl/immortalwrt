@@ -578,7 +578,7 @@ jobs:
           else
             echo "   Patching: $FIRM_GZ"
             # Use Python to patch the gzipped CPIO image in-place
-            python3 << PYEOF
+            python3 <<'PYEOF'
             import gzip, os, re, shutil, subprocess, tempfile
 
             img_path = os.environ.get('FIRM_GZ', '')

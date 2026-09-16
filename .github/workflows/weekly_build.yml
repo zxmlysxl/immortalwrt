@@ -508,7 +508,7 @@ jobs:
 
           # 删除用户指定的插件: chatgpt-web momo
           # 注意: attendedsysupgrade 和 usage 已禁用，不编译
-          for rmpkg in plugins chatgpt-web momo u; do
+          for rmpkg in plugins chatgpt-web momo usage eqosplus; do
             sed -i "/^CONFIG_PACKAGE_${rmpkg}/d" .config
             rm -rf package/feeds/zuoxm/${rmpkg} 2>/dev/null || true
             rm -rf package/feeds/zuoxm/luci-app-${rmpkg} 2>/dev/null || true
@@ -569,6 +569,81 @@ jobs:
           # OpenWrt automatically includes files/ from source root into rootfs
           # Remove the redundant copy step - OpenWrt handles it
           make target/install 2>&1 | tee -a /tmp/build.log | tail -100
+
+
+          echo "=== Step 3: Patch firmware image (fix %S and version info) ==="
+          FIRM_GZ=$(find bin/targets -type f \( -name "*ext4-combined-efi.img.gz" -o -name "*squashfs-combined-efi.img.gz" \) 2>/dev/null | head -1)
+          if [ -z "$FIRM_GZ" ]; then
+            echo "⚠️ No firmware found to patch"
+          else
+            echo "   Patching: $FIRM_GZ"
+            # Use Python to patch the gzipped CPIO image in-place
+            python3 << 'PYEOF'
+            import gzip, os, re, shutil, subprocess, tempfile
+
+            img_path = os.environ.get('FIRM_GZ', '')
+            build_date = os.environ.get('BUILD_DATE_SHORT', '20260916')
+            build_code = os.environ.get('BUILD_CODE', '26.09.16')
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # Decompress
+                cpio_path = os.path.join(tmpdir, 'rootfs.cpio')
+                with gzip.open(img_path, 'rb') as f:
+                    with open(cpio_path, 'wb') as out:
+                        out.write(f.read())
+
+                # Extract CPIO
+                rootfs = os.path.join(tmpdir, 'rootfs')
+                os.makedirs(rootfs)
+                with open(cpio_path, 'rb') as f:
+                    subprocess.run(['cpio', '-id', '-D', rootfs], stdin=f, check=True)
+
+                # Patch etc/openwrt_release
+                or_path = os.path.join(rootfs, 'etc', 'openwrt_release')
+                if os.path.exists(or_path):
+                    with open(or_path) as f:
+                        content = f.read()
+                    # Replace placeholders with actual values
+                    content = content.replace("FIXME_VERSION", build_date) \
+                                     .replace("FIXME_CODE", build_code) \
+                                     .replace("%S", "x86/64")
+                    with open(or_path, 'w') as f:
+                        f.write(content)
+                    print(f"   ✅ Patched openwrt_release: {or_path}")
+
+                # Patch etc/banner (%D %V, %C -> actual values)
+                banner_path = os.path.join(rootfs, 'etc', 'banner')
+                if os.path.exists(banner_path):
+                    with open(banner_path) as f:
+                        content = f.read()
+                    # Replace %D %V, %C line
+                    content = re.sub(
+                        r'( ----------------------------------------------------------------------------------------------
+) %D %V, %C
+( ----------------------------------------------------------------------------------------------)',
+                        r'\1 Z-ImmortalWrt ' + build_date + r' by zuoxm | R' + build_code + r'\2',
+                        content
+                    )
+                    with open(banner_path, 'w') as f:
+                        f.write(content)
+                    print(f"   ✅ Patched banner")
+
+                # Repack CPIO
+                new_cpio = os.path.join(tmpdir, 'new_rootfs.cpio')
+                with open(new_cpio, 'wb') as f:
+                    subprocess.run(['cpio', '-oc'], stdin=subprocess.DEVNULL,
+                                   stdout=f, check=True, cwd=rootfs)
+
+                # Recompress
+                new_img = os.path.join(tmpdir, 'new_firmware.img.gz')
+                with open(new_cpio, 'rb') as f_in:
+                    with gzip.open(new_img, 'wb', compresslevel=6) as f_out:
+                        f_out.writelines(f_in)
+
+                shutil.copy(new_img, img_path)
+                print(f"   ✅ Firmware patched and saved: {img_path}")
+            PYEOF
+          fi
 
           echo "=== 编译结束 ==="
           echo "=== 检查 bin 目录 ==="

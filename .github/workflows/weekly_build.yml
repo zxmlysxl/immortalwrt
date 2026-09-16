@@ -612,19 +612,15 @@ jobs:
                         f.write(content)
                     print(f"   ✅ Patched openwrt_release: {or_path}")
 
-                # Patch etc/banner (%D %V, %C -> actual values)
+                # Patch etc/banner (replace Make variables with actual values)
                 banner_path = os.path.join(rootfs, 'etc', 'banner')
                 if os.path.exists(banner_path):
                     with open(banner_path) as f:
                         content = f.read()
-                    # Replace %D %V, %C line
-                    content = re.sub(
-                        r'( ----------------------------------------------------------------------------------------------
-) %D %V, %C
-( ----------------------------------------------------------------------------------------------)',
-                        r'\1 Z-ImmortalWrt ' + build_date + r' by zuoxm | R' + build_code + r'\2',
-                        content
-                    )
+                    # Replace Make template variables in banner
+                    content = content.replace("%D", "Z-ImmortalWrt") \
+                                     .replace("%V", build_date) \
+                                     .replace("%C", build_code)
                     with open(banner_path, 'w') as f:
                         f.write(content)
                     print(f"   ✅ Patched banner")

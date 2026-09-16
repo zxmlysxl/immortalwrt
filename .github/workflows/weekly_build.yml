@@ -342,9 +342,9 @@ jobs:
           echo "CONFIG_VERSION_MANUFACTURER=\"x86_64\"" >> .config
           echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE} (manufacturer=x86_64)"
           # 修改 DISTRIB_DESCRIPTION 模板,加入 "by zuoxm | R" 前缀
+          # %D=VERSION_DIST, %V=VERSION_NUMBER, %C=VERSION_CODE -- Make VERSION_SED_SCRIPT variables
           echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
-          sed -i 's|%%S|x86_64|g' package/base-files/files/etc/openwrt_release
-          echo "   ✅ Modified openwrt_release template: %D %V by zuoxm | R%C (platform=x86_64)"
+          echo "   ✅ openwrt_release: DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'"
 
           echo "=== Step 8c: Enable openssh-server and dependencies for SFTP/PAM ==="
           sed -i 's/^# CONFIG_PACKAGE_openssh-server is not set$/CONFIG_PACKAGE_openssh-server=y/' .config
@@ -462,9 +462,9 @@ jobs:
           echo "CONFIG_VERSION_MANUFACTURER=\"x86_64\"" >> .config
           echo "   ✅ Version config re-applied after defconfig (manufacturer=x86_64)"
           # 同样确保 openwrt_release 在编译后重新写入
+          # Re-apply %D/%V/%C Make variables
           echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
-          echo "   ✅ openwrt_release template re-set (platform=x86_64)"
-          sed -i 's|%%S|x86_64|g' package/base-files/files/etc/openwrt_release
+          echo "   ✅ openwrt_release re-set: %D %V by zuoxm | R%C"
           sed -i 's/^# CONFIG_PACKAGE_shadow-utils is not set$/CONFIG_PACKAGE_shadow-utils=y/' .config
           if ! grep -q "^CONFIG_PACKAGE_shadow-utils=" .config 2>/dev/null; then
             echo "CONFIG_PACKAGE_shadow-utils=y" >> .config
@@ -571,7 +571,7 @@ jobs:
           make target/install 2>&1 | tee -a /tmp/build.log | tail -100
 
 
-          echo "=== Step 3: Patch firmware image (fix %S and version info) ==="
+          echo "=== Step 3: Patch firmware image (fix %D/%V/%C Make variables) ==="
           FIRM_GZ=$(find bin/targets -type f \( -name "*ext4-combined-efi.img.gz" -o -name "*squashfs-combined-efi.img.gz" \) 2>/dev/null | head -1)
           if [ -z "$FIRM_GZ" ]; then
             echo "⚠️ No firmware found to patch"
@@ -603,10 +603,11 @@ jobs:
                 if os.path.exists(or_path):
                     with open(or_path) as f:
                         content = f.read()
-                    # Replace placeholders with actual values
-                    content = content.replace("FIXME_VERSION", build_date) \
-                                     .replace("FIXME_CODE", build_code) \
-                                     .replace("%S", "x86/64")
+                    # Make VERSION_SED_SCRIPT variables: %D=VERSION_DIST, %V=VERSION_NUMBER, %C=VERSION_CODE
+                    # Workflow sets: BUILD_DATE_SHORT=date +%Y%m%d, BUILD_CODE=date +%y.%m
+                    content = content.replace("%D", "Z-ImmortalWrt") \
+                                     .replace("%V", build_date) \
+                                     .replace("%C", build_code)
                     with open(or_path, 'w') as f:
                         f.write(content)
                     print(f"   ✅ Patched openwrt_release: {or_path}")

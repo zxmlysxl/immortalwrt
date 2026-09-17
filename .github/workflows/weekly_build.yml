@@ -577,69 +577,8 @@ jobs:
             echo "⚠️ No firmware found to patch"
           else
             echo "   Patching: $FIRM_GZ"
-            # Use Python to patch the gzipped CPIO image in-place
-            python3 <<'PYEOF'
-            import gzip, os, re, shutil, subprocess, tempfile
-
-            img_path = os.environ.get('FIRM_GZ', '')
-            build_date = os.environ.get('BUILD_DATE_SHORT', '20260916')
-            build_code = os.environ.get('BUILD_CODE', '26.09.16')
-
-            with tempfile.TemporaryDirectory() as tmpdir:
-                # Decompress
-                cpio_path = os.path.join(tmpdir, 'rootfs.cpio')
-                with gzip.open(img_path, 'rb') as f:
-                    with open(cpio_path, 'wb') as out:
-                        out.write(f.read())
-
-                # Extract CPIO
-                rootfs = os.path.join(tmpdir, 'rootfs')
-                os.makedirs(rootfs)
-                with open(cpio_path, 'rb') as f:
-                    subprocess.run(['cpio', '-id', '-D', rootfs], stdin=f, check=True)
-
-                # Patch etc/openwrt_release
-                or_path = os.path.join(rootfs, 'etc', 'openwrt_release')
-                if os.path.exists(or_path):
-                    with open(or_path) as f:
-                        content = f.read()
-                    # Make VERSION_SED_SCRIPT variables: %D=VERSION_DIST, %V=VERSION_NUMBER, %C=VERSION_CODE
-                    # Workflow sets: BUILD_DATE_SHORT=date +%Y%m%d, BUILD_CODE=date +%y.%m
-                    content = content.replace("%D", "Z-ImmortalWrt") \
-                                     .replace("%V", build_date) \
-                                     .replace("%C", build_code)
-                    with open(or_path, 'w') as f:
-                        f.write(content)
-                    print(f"   ✅ Patched openwrt_release: {or_path}")
-
-                # Patch etc/banner (replace Make variables with actual values)
-                banner_path = os.path.join(rootfs, 'etc', 'banner')
-                if os.path.exists(banner_path):
-                    with open(banner_path) as f:
-                        content = f.read()
-                    # Replace Make template variables in banner
-                    content = content.replace("%D", "Z-ImmortalWrt") \
-                                     .replace("%V", build_date) \
-                                     .replace("%C", build_code)
-                    with open(banner_path, 'w') as f:
-                        f.write(content)
-                    print(f"   ✅ Patched banner")
-
-                # Repack CPIO
-                new_cpio = os.path.join(tmpdir, 'new_rootfs.cpio')
-                with open(new_cpio, 'wb') as f:
-                    subprocess.run(['cpio', '-oc'], stdin=subprocess.DEVNULL,
-                                   stdout=f, check=True, cwd=rootfs)
-
-                # Recompress
-                new_img = os.path.join(tmpdir, 'new_firmware.img.gz')
-                with open(new_cpio, 'rb') as f_in:
-                    with gzip.open(new_img, 'wb', compresslevel=6) as f_out:
-                        f_out.writelines(f_in)
-
-                shutil.copy(new_img, img_path)
-                print(f"   ✅ Firmware patched and saved: {img_path}")
-            PYEOF
+            export FIRM_GZ BUILD_DATE_SHORT BUILD_CODE
+            python3 scripts/patch_firmware.py || echo "⚠️ Patch script failed (non-critical)"
           fi
 
           echo "=== 编译结束 ==="

@@ -509,8 +509,8 @@ jobs:
           # 删除用户指定的插件: chatgpt-web momo
           # 注意: attendedsysupgrade 和 usage 已禁用，不编译
           # 删除 zuoxm feed 中的插件
-          # 注意: plugins 和 usage 是 luci-app-plugins 和 luci-app-usage
-          for rmpkg in luci-app-plugins luci-app-usage luci-app-chatgpt-web luci-app-momo luci-app-eqosplus; do
+          # 注意: usage 是 luci-app-wrtbwmon
+          for rmpkg in luci-app-plugins luci-app-wrtbwmon luci-app-chatgpt-web luci-app-momo luci-app-eqosplus; do
             pkgname=$(basename $rmpkg)
             sed -i "/^CONFIG_PACKAGE_${rmpkg}/d" .config
             rm -rf package/feeds/zuoxm/${rmpkg} 2>/dev/null || true

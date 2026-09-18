@@ -27,6 +27,14 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      - name: Disable unwanted packages
+        run: |
+          # Disable plugins and usage packages
+          sed -i 's/CONFIG_PACKAGE_luci-app-plugins=y/# CONFIG_PACKAGE_luci-app-plugins is not set/' .config 2>/dev/null || true
+          sed -i 's/CONFIG_PACKAGE_luci-app-usage=y/# CONFIG_PACKAGE_luci-app-usage is not set/' .config 2>/dev/null || true
+          sed -i 's/CONFIG_PACKAGE_cpusage=y/# CONFIG_PACKAGE_cpusage is not set/' .config 2>/dev/null || true
+          echo "✅ Disabled plugins and usage packages"
+
       - name: Copy custom files
         run: |
           if [ -d "files" ]; then

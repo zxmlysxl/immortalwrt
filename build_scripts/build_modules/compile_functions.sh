@@ -27,6 +27,10 @@ common_compile() {
     dynamic_timer "安装 feeds" "./scripts/feeds install -a"
     dynamic_timer "安装 zuoxm包" "./scripts/feeds install -a -p zuoxm -f"
     
+    # 禁用不需要的插件（plugins、usage）
+    echo -e "${CYAN}▶ 禁用不需要的插件...${NC}"
+    bash "${SCRIPT_DIR}/disable_packages.sh"
+    
     # 交互式配置
     echo -e "\n${YELLOW}是否要调整配置? (${MENU_TIMEOUT}秒后自动跳过)${NC}"
     for (( i=MENU_TIMEOUT; i>0; i-- )); do

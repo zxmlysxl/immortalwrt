@@ -517,7 +517,6 @@ jobs:
             rm -rf package/feeds/zuoxm/${pkgname} 2>/dev/null || true
             echo "   🧹 Removed: ${rmpkg}"
           done
-          done
 
           # shadowsocksr-libev:先删配置行,再显式标记为不启用
           for pkg in shadowsocksr-libev-ssr-local shadowsocksr-libev-ssr-redir shadowsocksr-libev-ssr-server shadowsocksr-libev-ssr-check shadowsocksr-libev-ssr-nat; do

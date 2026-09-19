@@ -15,20 +15,74 @@ jobs:
         if: ${{ github.event.repository.fork }}
 
         steps:
-            - name: Checkout target repo
-              uses: actions/checkout@v4.2.0
-
-            - name: Sync Upstream
-              uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
+            - name: Checkout repository
+              uses: actions/checkout@v4
               with:
-                  target_repo_token: ${{ secrets.GITHUB_TOKEN }}
-                  upstream_sync_repo: immortalwrt/immortalwrt
-                  upstream_sync_branch: master
-                  target_sync_branch: master
-                  test_mode: false
+                  fetch-depth: 0
+                  persist-credentials: false
 
-            - name: Check for Failure
-              if: failure()
+            - name: Configure Git
               run: |
-                  echo "[Error] Due to a change in the workflow file of the upstream repository, GitHub has automatically suspended the scheduled automatic update. You need to manually sync your fork."
-                  exit 1
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+
+            - name: Add upstream remote
+              run: |
+                  git remote add upstream https://github.com/immortalwrt/immortalwrt.git
+                  git remote -v
+
+            - name: Fetch upstream
+              run: |
+                  echo "=== Fetching upstream master ==="
+                  git fetch upstream master --tags --depth=1
+                  echo "   upstream/latest: $(git log -1 --format='%H %s' upstream/master)"
+
+            - name: Check if sync needed
+              id: check
+              run: |
+                  LOCAL=$(git rev-parse HEAD)
+                  UPSTREAM=$(git rev-parse upstream/master)
+                  echo "local=$LOCAL" >> $GITHUB_OUTPUT
+                  echo "upstream=$UPSTREAM" >> $GITHUB_OUTPUT
+                  if [ "$LOCAL" = "$UPSTREAM" ]; then
+                      echo "sync_needed=false" >> $GITHUB_OUTPUT
+                      echo "✅ Already up to date with upstream"
+                  else
+                      echo "sync_needed=true" >> $GITHUB_OUTPUT
+                      echo "📦 Updates available from upstream"
+                      echo "   Local:  $(git log -1 --format='%H %s' HEAD)"
+                      echo "   Upstream: $(git log -1 --format='%H %s' upstream/master)"
+                  fi
+
+            - name: Sync from upstream
+              if: steps.check.outputs.sync_needed == 'true'
+              run: |
+                  echo "=== Merging upstream (theirs strategy) ==="
+                  if git merge -s recursive -X theirs upstream/master --no-edit; then
+                      echo "✅ Merge successful"
+                  else
+                      echo "⚠️ Merge conflict, aborting..."
+                      git merge --abort
+                      echo "❌ Sync failed due to conflicts"
+                      exit 1
+                  fi
+
+            - name: Push to origin
+              if: steps.check.outputs.sync_needed == 'true'
+              run: |
+                  echo "=== Pushing to origin ==="
+                  if git push origin master; then
+                      echo "✅ Sync completed successfully!"
+                      echo "📋 Changes merged from upstream:"
+                      git log --oneline HEAD~5..HEAD
+                  else
+                      echo "❌ Push failed"
+                      exit 1
+                  fi
+
+            - name: Summary
+              run: |
+                  echo "=== Sync Summary ==="
+                  echo "Local branch: master"
+                  echo "Upstream: immortalwrt/immortalwrt master"
+                  echo "Last commit: $(git log -1 --format='%h %s - %an, %ci' HEAD)"

@@ -58,7 +58,7 @@ jobs:
               if: steps.check.outputs.sync_needed == 'true'
               run: |
                   echo "=== Merging upstream (theirs strategy) ==="
-                  if git merge -s recursive -X theirs upstream/master --no-edit; then
+                  if git merge -s recursive -X theirs --allow-unrelated-histories upstream/master --no-edit; then
                       echo "✅ Merge successful"
                   else
                       echo "⚠️ Merge conflict, aborting..."

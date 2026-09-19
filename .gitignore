@@ -3,6 +3,7 @@
 .*.swp
 /env
 /dl
+/.config
 /.config.old
 /.toolchain_build_ver
 /bin
@@ -12,6 +13,7 @@
 /logs
 /feeds
 /feeds.conf
+/files
 /target/linux/feeds
 /overlay
 /package/feeds
@@ -33,4 +35,3 @@ git-src
 .cproject
 .ccache
 .vscode*
-*.log

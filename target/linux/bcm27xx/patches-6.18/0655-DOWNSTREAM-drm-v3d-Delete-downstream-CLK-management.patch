@@ -89,14 +89,14 @@ Signed-off-by: Maíra Canal <mcanal@igalia.com>
  
  	struct reset_control *reset;
  
-@@ -645,4 +640,3 @@ int v3d_perfmon_set_global_ioctl(struct
+@@ -651,4 +646,3 @@ int v3d_perfmon_set_global_ioctl(struct
  /* v3d_sysfs.c */
  int v3d_sysfs_init(struct device *dev);
  void v3d_sysfs_destroy(struct device *dev);
 -void v3d_submit_init(struct drm_device *dev);
 --- a/drivers/gpu/drm/v3d/v3d_gem.c
 +++ b/drivers/gpu/drm/v3d/v3d_gem.c
-@@ -299,8 +299,6 @@ v3d_gem_init(struct drm_device *dev)
+@@ -311,8 +311,6 @@ v3d_gem_init(struct drm_device *dev)
  	if (ret)
  		return ret;
  

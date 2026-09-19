@@ -79,7 +79,7 @@ VERSION_TAINT_SPECS := \
 	+BUSYBOX_CUSTOM:busybox \
 	+OVERRIDE_PKGS:override \
 
-VERSION_TAINTS := $(strip $(foreach taint,$(VERSION_TAINT_SPECT), \
+VERSION_TAINTS := $(strip $(foreach taint,$(VERSION_TAINT_SPECS), \
 	$(if $(findstring +,$(taint)), \
 		$(if $(call taint2sym,$(taint)),$(call taint2name,$(taint))), \
 		$(if $(call taint2sym,$(taint)),,$(call taint2name,$(taint))) \
@@ -113,6 +113,4 @@ VERSION_SED_SCRIPT:=$(SED) 's,%U,$(call sed_escape,$(VERSION_REPO)),g' \
 	-e 's,%f,$(call sed_escape,$(VERSION_FIRMWARE_URL)),g' \
 	-e 's,%P,$(call sed_escape,$(VERSION_PRODUCT)),g' \
 	-e 's,%h,$(call sed_escape,$(VERSION_HWREV)),g' \
-	-e 's,%B,$(call sed_escape,$(SOURCE_DATE_EPOCH)),g' \
-	-e 's,%F,$(call sed_escape,$(shell date +%Y%m%d%H%M)),g' \
-	-e 's,%G,$(call sed_escape,$(shell date +%y.%m.%d)),g'
+	-e 's,%B,$(call sed_escape,$(SOURCE_DATE_EPOCH)),g'

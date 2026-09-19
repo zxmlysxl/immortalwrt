@@ -473,6 +473,24 @@ jobs:
           echo "   ✅ SSH config injected via files/etc/ssh/"
           fi
 
+          echo "=== Step 9f: Final version config (ensure after all oldconfig) ==="
+          # 确保版本配置在所有 oldconfig 之后被正确设置
+          sed -i 's/^# CONFIG_VERSIONOPT is not set$/CONFIG_VERSIONOPT=y/' .config
+          if ! grep -q "^CONFIG_VERSIONOPT=" .config 2>/dev/null; then
+            echo "CONFIG_VERSIONOPT=y" >> .config
+          fi
+          sed -i '/^CONFIG_VERSION_DIST=/d' .config
+          sed -i '/^CONFIG_VERSION_NUMBER=/d' .config
+          sed -i '/^CONFIG_VERSION_CODE=/d' .config
+          sed -i '/^CONFIG_VERSION_MANUFACTURER=/d' .config
+          echo "CONFIG_VERSION_DIST=\"Z-ImmortalWrt\"" >> .config
+          echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
+          echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
+          echo "CONFIG_VERSION_MANUFACTURER=\"x86_64\"" >> .config
+          echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
+          echo "   ✅ Final version: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
+          echo "   ✅ Final openwrt_release: DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'"
+
           echo "=== Step 10: Verify .config ==="
           echo "   LuCI packages after restore: $(grep -c '^CONFIG_PACKAGE_luci' .config)"
           echo "   Theme packages after restore: $(grep -c '^CONFIG_PACKAGE_luci-theme' .config)"
@@ -510,7 +528,7 @@ jobs:
           # 注意: attendedsysupgrade 和 usage 已禁用，不编译
           # 删除 zuoxm feed 中的插件
           # 注意: usage 是 luci-app-wrtbwmon
-          for rmpkg in luci-app-taskplan luci-app-wrtbwmon luci-app-chatgpt-web luci-app-momo luci-app-eqosplus; do
+          for rmpkg in luci-app-wrtbwmon luci-app-chatgpt-web luci-app-momo luci-app-eqosplus; do
             pkgname=$(basename $rmpkg)
             sed -i "/^CONFIG_PACKAGE_${rmpkg}/d" .config
             rm -rf package/feeds/zuoxm/${rmpkg} 2>/dev/null || true

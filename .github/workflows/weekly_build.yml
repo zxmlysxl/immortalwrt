@@ -331,7 +331,7 @@ jobs:
             echo "   ✅ Added CONFIG_VERSIONOPT=y"
           fi
           BUILD_DATE_SHORT=$(date +%Y%m%d)
-          BUILD_CODE=$(date +%y.%m)
+          BUILD_CODE=$(date +%y.%m.%d)
           sed -i '/^CONFIG_VERSION_DIST=/d' .config
           sed -i '/^CONFIG_VERSION_NUMBER=/d' .config
           sed -i '/^CONFIG_VERSION_CODE=/d' .config
@@ -340,7 +340,7 @@ jobs:
           echo "CONFIG_VERSION_NUMBER=\"${BUILD_DATE_SHORT}\"" >> .config
           echo "CONFIG_VERSION_CODE=\"${BUILD_CODE}\"" >> .config
           echo "CONFIG_VERSION_MANUFACTURER=\"x86_64\"" >> .config
-          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE} (manufacturer=x86_64)"
+          echo "   ✅ Version config set: Z-ImmortalWrt ${BUILD_DATE_SHORT} by zuoxm | R${BUILD_CODE}"
           # 修改 DISTRIB_DESCRIPTION 模板,加入 "by zuoxm | R" 前缀
           # %D=VERSION_DIST, %V=VERSION_NUMBER, %C=VERSION_CODE -- Make VERSION_SED_SCRIPT variables
           echo "DISTRIB_DESCRIPTION='%D %V by zuoxm | R%C'" > package/base-files/files/etc/openwrt_release
@@ -510,7 +510,7 @@ jobs:
           # 注意: attendedsysupgrade 和 usage 已禁用，不编译
           # 删除 zuoxm feed 中的插件
           # 注意: usage 是 luci-app-wrtbwmon
-          for rmpkg in luci-app-plugins luci-app-wrtbwmon luci-app-chatgpt-web luci-app-momo luci-app-eqosplus; do
+          for rmpkg in luci-app-taskplan luci-app-wrtbwmon luci-app-chatgpt-web luci-app-momo luci-app-eqosplus; do
             pkgname=$(basename $rmpkg)
             sed -i "/^CONFIG_PACKAGE_${rmpkg}/d" .config
             rm -rf package/feeds/zuoxm/${rmpkg} 2>/dev/null || true

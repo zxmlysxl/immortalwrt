@@ -39,15 +39,10 @@ jobs:
           echo "=== Syncing upstream ==="
           git fetch upstream master --depth=1
           git merge upstream/master --no-edit --allow-unrelated-histories || {
-            # Auto-resolve all conflicts: for each conflicted file:
-            # - If it's feeds.conf.default: take upstream + preserve zuoxm feed
-            # - If it's config_generate: keep our version (we'll reapply patches after)
-            # - Otherwise: take theirs (upstream) to keep build compatibility
             for f in $(git diff --name-only --diff-filter=U 2>/dev/null); do
               echo "Resolving conflict in: $f"
               case "$f" in
                 feeds.conf.default)
-                  # Take upstream feeds.conf.default, preserve zuoxm feed
                   git show upstream/master:feeds.conf.default > feeds.conf.default.tmp
                   echo "src-git zuoxm https://github.com/zxmlysxl/zxm_immortalwrt_packages.git" > feeds.conf.default
                   grep -v "^src-git zuoxm" feeds.conf.default.tmp >> feeds.conf.default
@@ -55,12 +50,10 @@ jobs:
                   git add feeds.conf.default
                   ;;
                 package/base-files/files/bin/config_generate)
-                  # Keep our version (custom IP/hostname/timezone), reapply sed patches later
                   git checkout --ours "$f"
                   git add "$f"
                   ;;
                 *)
-                  # Take upstream version for all other conflicts
                   git checkout --theirs "$f"
                   git add "$f"
                   ;;
@@ -75,12 +68,10 @@ jobs:
       - name: Apply source patches
         run: |
           echo "=== Applying source patches ==="
-          # config_generate: IP, hostname, timezone
           sed -i 's/192\.168\.1\.1/192.168.32.10/g' package/base-files/files/bin/config_generate
           sed -i "s/hostname='ImmortalWrt'/hostname='Z-ImmWrt'/g" package/base-files/files/bin/config_generate
           sed -i "s/timezone='GMT0'/timezone='CST-8'/g" package/base-files/files/bin/config_generate
           sed -i "s/zonename='UTC'/zonename='Asia\/Shanghai'/g" package/base-files/files/bin/config_generate
-          # Validate
           grep -q "192.168.32.10" package/base-files/files/bin/config_generate && \
           grep -q "Z-ImmWrt" package/base-files/files/bin/config_generate && \
           grep -q "Asia/Shanghai" package/base-files/files/bin/config_generate && \
@@ -156,10 +147,9 @@ jobs:
       # ========== Find & rename firmware ==========
       - name: Find and rename firmware
         id: firmware
-        env:
-          BUILD_DATE: ${{ env.BUILD_DATE }}
         run: |
           cd bin/targets/x86/64
+          BUILD_DATE=$(date +"%Y%m%d")
           FIRMWARE=$(ls -t *-efi.img.gz 2>/dev/null | grep -v "^Z-ImmWrt" | head -1)
           if [ -z "$FIRMWARE" ]; then
             FIRMWARE=$(ls -t *.img.gz 2>/dev/null | head -1)
@@ -169,7 +159,6 @@ jobs:
           SIZE=$(du -h "$NEW_NAME" | cut -f1)
           SHA256=$(sha256sum "$NEW_NAME" | cut -d' ' -f1)
           echo "firmware=$NEW_NAME" >> $GITHUB_OUTPUT
-          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
           echo "size=$SIZE" >> $GITHUB_OUTPUT
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
           echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
@@ -179,7 +168,7 @@ jobs:
       # ========== Cleanup previous failed tag (if any) ==========
       - name: Cleanup previous tag
         run: |
-          TAG="Z-ImmWrt-${{ env.BUILD_DATE }}"
+          TAG="Z-ImmWrt-${{ steps.firmware.outputs.build_date }}"
           if git tag | grep -q "^$TAG$"; then
             git tag -d "$TAG"
             git push origin :refs/tags/"$TAG" || true
@@ -192,8 +181,8 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: Z-ImmWrt-${{ env.BUILD_DATE }}
-          name: Z-ImmWrt-${{ env.BUILD_DATE }} by zuoxm
+          tag_name: Z-ImmWrt-${{ steps.firmware.outputs.build_date }}
+          name: Z-ImmWrt-${{ steps.firmware.outputs.build_date }} by zuoxm
           draft: false
           prerelease: false
           files: bin/targets/x86/64/Z-ImmWrt-*.img.gz
@@ -207,7 +196,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Firmware | Z-ImmWrt-$(date +%Y%m%d)-zuoxm-x86_64-efi.img.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firmware | Z-ImmWrt-${{ steps.firmware.outputs.build_date }}-zuoxm-x86_64-efi.img.gz |" >> $GITHUB_STEP_SUMMARY
           echo "| Size | ${{ steps.firmware.outputs.size }} |" >> $GITHUB_STEP_SUMMARY
           echo "| SHA256 | \`${{ steps.firmware.outputs.sha256 }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`$(git log --oneline -1)\` |" >> $GITHUB_STEP_SUMMARY

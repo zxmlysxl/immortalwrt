@@ -176,11 +176,6 @@ jobs:
           echo "=== $NEW_NAME ($SIZE) ==="
           ls -lh "$NEW_NAME"
 
-      # ========== Ensure BUILD_DATE in env ==========
-      - name: Set build date
-        run: |
-          echo "BUILD_DATE=$(date +%Y%m%d)" >> $GITHUB_ENV
-
       # ========== Cleanup previous failed tag (if any) ==========
       - name: Cleanup previous tag
         run: |
@@ -197,8 +192,8 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: Z-ImmWrt-${{ steps.firmware.outputs.BUILD_DATE }}
-          release_name: Z-ImmWrt-${{ steps.firmware.outputs.BUILD_DATE }} by zuoxm
+          tag_name: Z-ImmWrt-${{ env.BUILD_DATE }}
+          name: Z-ImmWrt-${{ env.BUILD_DATE }} by zuoxm
           draft: false
           prerelease: false
           files: bin/targets/x86/64/Z-ImmWrt-*.img.gz

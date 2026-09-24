@@ -73,6 +73,13 @@ jobs:
           ./scripts/feeds install -a
           ./scripts/feeds install -a -p zuoxm -f 2>/dev/null || true
 
+      # ========== Install required tools ==========
+      - name: Install build tools
+        run: |
+          echo "=== Installing required tools ==="
+          apt-get update -qq
+          apt-get install -y -qq qemu-utils genisoimage parted dosfstools
+
       # ========== Copy overlay files ==========
       - name: Copy overlay files
         run: |

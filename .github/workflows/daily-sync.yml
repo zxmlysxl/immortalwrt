@@ -56,10 +56,11 @@ jobs:
       - name: Check for changes
         id: changed
         run: |
+          # Suppress the local changes.txt file from showing in porcelain output
+          rm -f changes.txt
           git status --porcelain > changes.txt
           if [ -s changes.txt ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "changes=$(cat changes.txt)" >> $GITHUB_OUTPUT
           else
             echo "changed=false" >> $GITHUB_OUTPUT
           fi

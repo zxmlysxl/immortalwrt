@@ -45,6 +45,9 @@ jobs:
             grep -v "^src-git zuoxm" feeds.conf.default.tmp >> feeds.conf.default
             rm feeds.conf.default.tmp
             git add feeds.conf.default
+            # Conflict in config_generate: keep our version, reapply sed patches
+            git checkout --ours package/base-files/files/bin/config_generate
+            git add package/base-files/files/bin/config_generate
             git commit --no-edit --allow-empty
           }
           echo "=== Sync complete ==="

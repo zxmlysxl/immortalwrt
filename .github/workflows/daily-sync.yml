@@ -8,6 +8,9 @@ on:
 env:
   TZ: Asia/Shanghai
 
+permissions:
+  contents: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -56,8 +59,6 @@ jobs:
       - name: Check for changes
         id: changed
         run: |
-          # Suppress the local changes.txt file from showing in porcelain output
-          rm -f changes.txt
           git status --porcelain > changes.txt
           if [ -s changes.txt ]; then
             echo "changed=true" >> $GITHUB_OUTPUT

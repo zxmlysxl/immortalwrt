@@ -156,9 +156,10 @@ jobs:
       # ========== Find & rename firmware ==========
       - name: Find and rename firmware
         id: firmware
+        env:
+          BUILD_DATE: ${{ env.BUILD_DATE }}
         run: |
           cd bin/targets/x86/64
-          BUILD_DATE=$(date +"%Y%m%d")
           FIRMWARE=$(ls -t *-efi.img.gz 2>/dev/null | grep -v "^Z-ImmWrt" | head -1)
           if [ -z "$FIRMWARE" ]; then
             FIRMWARE=$(ls -t *.img.gz 2>/dev/null | head -1)
@@ -171,8 +172,26 @@ jobs:
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
           echo "size=$SIZE" >> $GITHUB_OUTPUT
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
           echo "=== $NEW_NAME ($SIZE) ==="
           ls -lh "$NEW_NAME"
+
+      # ========== Ensure BUILD_DATE in env ==========
+      - name: Set build date
+        run: |
+          echo "BUILD_DATE=$(date +%Y%m%d)" >> $GITHUB_ENV
+
+      # ========== Cleanup previous failed tag (if any) ==========
+      - name: Cleanup previous tag
+        run: |
+          TAG="Z-ImmWrt-${{ env.BUILD_DATE }}"
+          if git tag | grep -q "^$TAG$"; then
+            git tag -d "$TAG"
+            git push origin :refs/tags/"$TAG" || true
+            echo "🗑 Removed stale tag: $TAG"
+          else
+            echo "ℹ No stale tag found: $TAG"
+          fi
 
       # ========== Create release ==========
       - name: Create release

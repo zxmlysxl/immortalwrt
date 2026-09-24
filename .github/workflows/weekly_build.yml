@@ -39,15 +39,33 @@ jobs:
           echo "=== Syncing upstream ==="
           git fetch upstream master --depth=1
           git merge upstream/master --no-edit --allow-unrelated-histories || {
-            # Conflict in feeds.conf.default: take upstream version, preserve zuoxm feed
-            git show upstream/master:feeds.conf.default > feeds.conf.default.tmp
-            echo "src-git zuoxm https://github.com/zxmlysxl/zxm_immortalwrt_packages.git" > feeds.conf.default
-            grep -v "^src-git zuoxm" feeds.conf.default.tmp >> feeds.conf.default
-            rm feeds.conf.default.tmp
-            git add feeds.conf.default
-            # Conflict in config_generate: keep our version, reapply sed patches
-            git checkout --ours package/base-files/files/bin/config_generate
-            git add package/base-files/files/bin/config_generate
+            # Auto-resolve all conflicts: for each conflicted file:
+            # - If it's feeds.conf.default: take upstream + preserve zuoxm feed
+            # - If it's config_generate: keep our version (we'll reapply patches after)
+            # - Otherwise: take theirs (upstream) to keep build compatibility
+            for f in $(git diff --name-only --diff-filter=U 2>/dev/null); do
+              echo "Resolving conflict in: $f"
+              case "$f" in
+                feeds.conf.default)
+                  # Take upstream feeds.conf.default, preserve zuoxm feed
+                  git show upstream/master:feeds.conf.default > feeds.conf.default.tmp
+                  echo "src-git zuoxm https://github.com/zxmlysxl/zxm_immortalwrt_packages.git" > feeds.conf.default
+                  grep -v "^src-git zuoxm" feeds.conf.default.tmp >> feeds.conf.default
+                  rm -f feeds.conf.default.tmp
+                  git add feeds.conf.default
+                  ;;
+                package/base-files/files/bin/config_generate)
+                  # Keep our version (custom IP/hostname/timezone), reapply sed patches later
+                  git checkout --ours "$f"
+                  git add "$f"
+                  ;;
+                *)
+                  # Take upstream version for all other conflicts
+                  git checkout --theirs "$f"
+                  git add "$f"
+                  ;;
+              esac
+            done
             git commit --no-edit --allow-empty
           }
           echo "=== Sync complete ==="
@@ -160,8 +178,8 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: Z-ImmWrt-${{ steps.firmware.outputs.build_date }}
-          release_name: Z-ImmWrt-${{ steps.firmware.outputs.build_date }} by zuoxm
+          tag_name: Z-ImmWrt-${{ steps.firmware.outputs.BUILD_DATE }}
+          release_name: Z-ImmWrt-${{ steps.firmware.outputs.BUILD_DATE }} by zuoxm
           draft: false
           prerelease: false
           files: bin/targets/x86/64/Z-ImmWrt-*.img.gz

@@ -1,0 +1,213 @@
+name: Build ImmortalWrt x86_64
+
+on:
+  schedule:
+    - cron: '0 9 * * 5'
+  workflow_dispatch:
+    inputs:
+      skip_sync:
+        description: 'Skip upstream sync (use cached source)'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Configure git
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git || true
+
+      # ========== Sync upstream (only if not skipped) ==========
+      - name: Sync upstream
+        if: inputs.skip_sync != 'true'
+        run: |
+          echo "=== Syncing upstream ==="
+          git fetch upstream master --depth=1
+          git merge upstream/master --no-edit
+          echo "=== Sync complete, new commits: ==="
+          git log --oneline HEAD~5..HEAD
+
+      # ========== Apply source patches (IP, hostname, timezone) ==========
+      - name: Apply source patches
+        run: |
+          echo "=== Applying source patches ==="
+          # config_generate: IP, hostname, timezone
+          sed -i 's/192\.168\.1\.1/192.168.32.10/g' package/base-files/files/bin/config_generate
+          sed -i "s/hostname='ImmortalWrt'/hostname='Z-ImmWrt'/g" package/base-files/files/bin/config_generate
+          sed -i "s/timezone='GMT0'/timezone='CST-8'/g" package/base-files/files/bin/config_generate
+          sed -i "s/zonename='UTC'/zonename='Asia\/Shanghai'/g" package/base-files/files/bin/config_generate
+          # Validate patch applied
+          grep "192.168.32.10" package/base-files/files/bin/config_generate && \
+          grep "Z-ImmWrt" package/base-files/files/bin/config_generate && \
+          grep "Asia/Shanghai" package/base-files/files/bin/config_generate && \
+          echo "✅ Source patches applied successfully" || { echo "❌ Patch application failed"; exit 1; }
+
+      # ========== Prepare feeds ==========
+      - name: Prepare feeds
+        run: |
+          echo "=== Preparing feeds ==="
+          # Use custom feeds.conf.default if exists
+          if [ -f feeds.conf.default ]; then
+            echo "Using custom feeds.conf.default"
+          else
+            cp feeds.conf.default.example feeds.conf.default 2>/dev/null || true
+          fi
+          ./scripts/feeds update -a
+
+      # ========== Install feeds ==========
+      - name: Install feeds
+        run: |
+          echo "=== Installing feeds ==="
+          ./scripts/feeds install -a
+          # Install zuoxm feed if defined
+          ./scripts/feeds install -a -p zuoxm -f 2>/dev/null || true
+
+      # ========== Copy overlay files ==========
+      - name: Copy overlay files
+        run: |
+          echo "=== Copying overlay files ==="
+          # Create compile_info (firmware version string)
+          mkdir -p files/etc
+          echo "Z-ImmortalWrt $(date +"%Y%m%d%H%M") by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
+          echo "✅ compile_info created"
+          # Copy profile, profiles, shadow, banner if they exist in files/etc/
+          for f in profile profiles shadow banner; do
+            if [ -f "files/etc/$f" ]; then
+              echo "✅ $f overlay exists"
+            fi
+          done
+
+      # ========== Copy .config ==========
+      - name: Copy .config
+        run: |
+          echo "=== Copying .config ==="
+          if [ -f .config ]; then
+            echo ".config already present ($(wc -l < .config) lines)"
+          else
+            echo "❌ .config not found!"
+            exit 1
+          fi
+
+      # ========== Configure build ==========
+      - name: Configure build
+        run: |
+          echo "=== Configuring build ==="
+          # Ensure GO cache is world-readable
+          echo "CONFIG_GOLANG_MOD_CACHE_WORLD_READABLE=y" >> .config
+          make defconfig
+          echo "✅ Configuration complete"
+
+      # ========== Download sources ==========
+      - name: Download sources
+        run: |
+          echo "=== Downloading sources ==="
+          make download -j$(nproc)
+          echo "✅ Download complete"
+
+      # ========== Compile firmware ==========
+      - name: Compile firmware
+        run: |
+          echo "=== Compiling firmware (x86_64 EFI) ==="
+          # Prioritize single-thread compile for hysteria (fixes GO cache conflicts)
+          make package/feeds/zuoxm/hysteria/compile V=s -j1 || true
+          # Full build with parallel jobs, retry once on failure
+          make -j$(nproc) V=s 2>&1 | tee build.log
+          BUILD_STATUS=${PIPESTATUS[0]}
+          if [ $BUILD_STATUS -ne 0 ]; then
+            echo "=== Build failed, retrying with single thread ==="
+            make clean >/dev/null 2>&1 || true
+            make -j1 V=s 2>&1 | tee -a build.log
+            BUILD_STATUS=${PIPESTATUS[0]}
+          fi
+          if [ $BUILD_STATUS -ne 0 ]; then
+            echo "=== Build failed, last 50 lines of log: ==="
+            tail -50 build.log
+            exit 1
+          fi
+          echo "✅ Build complete"
+
+      # ========== Find firmware ==========
+      - name: Find firmware
+        id: firmware
+        run: |
+          echo "=== Finding firmware ==="
+          cd bin/targets/x86/64
+          FIRMWARE=$(ls -t *-efi.img.gz 2>/dev/null | head -1)
+          if [ -z "$FIRMWARE" ]; then
+            FIRMWARE=$(ls -t *.img.gz 2>/dev/null | head -1)
+          fi
+          if [ -n "$FIRMWARE" ]; then
+            SIZE=$(du -h "$FIRMWARE" | cut -f1)
+            SHA256=$(sha256sum "$FIRMWARE" | cut -d' ' -f1)
+            echo "firmware=$FIRMWARE" >> $GITHUB_OUTPUT
+            echo "size=$SIZE" >> $GITHUB_OUTPUT
+            echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+            echo "=== Firmware found: $FIRMWARE ($SIZE) ==="
+            ls -lh "$FIRMWARE"
+          else
+            echo "❌ No firmware found!"
+            ls -la
+            exit 1
+          fi
+
+      # ========== Rename firmware ==========
+      - name: Rename firmware
+        run: |
+          echo "=== Renaming firmware ==="
+          cd bin/targets/x86/64
+          BUILD_DATE=$(date +"%Y%m%d")
+          NEW_NAME="Z-ImmWrt-${BUILD_DATE}-zuoxm-x86_64-efi.img.gz"
+          mv "${{ steps.firmware.outputs.firmware }}" "$NEW_NAME"
+          echo "✅ Renamed to: $NEW_NAME"
+          ls -lh "$NEW_NAME"
+
+      # ========== Upload firmware ==========
+      - name: Upload firmware
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: bin/targets/x86/64/Z-ImmWrt-*.img.gz
+          asset_name: Z-ImmWrt-${{ env.BUILD_DATE }}-zuoxm-x86_64-efi.img.gz
+          asset_content_type: application/gzip
+
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: Z-ImmWrt-${{ env.BUILD_DATE }}
+          release_name: Z-ImmWrt-${{ env.BUILD_DATE }} by zuoxm
+          draft: false
+          prerelease: false
+          files: |
+            bin/targets/x86/64/Z-ImmWrt-*.img.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build summary
+        run: |
+          echo "## ✅ Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Firmware | Z-ImmWrt-$(date +%Y%m%d)-zuoxm-x86_64-efi.img.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| Size | ${{ steps.firmware.outputs.size }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SHA256 | \`${{ steps.firmware.outputs.sha256 }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`$(git log --oneline -1)\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Date | $(date '+%Y-%m-%d %H:%M:%S %Z') |" >> $GITHUB_STEP_SUMMARY

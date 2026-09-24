@@ -38,7 +38,7 @@ jobs:
         run: |
           echo "=== Syncing upstream ==="
           git fetch upstream master --depth=1
-          git merge upstream/master --no-edit
+          git merge upstream/master --no-edit --allow-unrelated-histories
           echo "=== Sync complete ==="
           git log --oneline HEAD~3..HEAD
 

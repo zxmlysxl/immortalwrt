@@ -1,0 +1,80 @@
+name: Daily Upstream Sync
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+env:
+  TZ: Asia/Shanghai
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/immortalwrt/immortalwrt.git 2>/dev/null || true
+          git fetch upstream
+
+      - name: Merge upstream master
+        run: |
+          git merge upstream/master --no-edit --allow-unrelated-histories || {
+            echo "Merge conflict detected, resolving..."
+            # Resolve feeds.conf.default conflict - upstream may change feeds URL
+            if git conflicted feeds.conf.default; then
+              bash << 'EOF'
+              git checkout --theirs feeds.conf.default
+              # Restore our custom feeds, upstream keeps standard ones
+              cat > feeds.conf.default << 'FEEDS'
+src-git zuoxm https://github.com/zxmlysxl/zxm_immortalwrt_packages.git
+src-git packages https://github.com/zxmlysxl/immortalwrt_packages.git
+src-git luci https://github.com/zxmlysxl/immortalwrt_luci.git
+FEEDS
+              git add feeds.conf.default
+              git commit --no-edit
+              EOF
+            fi
+            # If still failing, abort and report
+            git merge --abort 2>/dev/null || true
+          }
+
+      - name: Apply IP/hostname patches (immortalwrt specific)
+        run: |
+          # immortalwrt uses 192.168.1.1 by default, change to 192.168.32.10
+          sed -i 's/192\.168\.1\.1/192.168.32.10/g' package/base-files/files/bin/config_generate
+          # Set timezone to Asia/Shanghai
+          sed -i 'sTIMEZONE=.*TIMEZONE=Asia/Shanghai' package/base-files/files/bin/config_generate
+          # Set hostname
+          sed -i 's/hostname="ImmortalWrt"/hostname="ZUOXM"/g' package/base-files/files/bin/config_generate
+          # Set default locale
+          sed -i 's/uci set system.@system[0].lang=.*/uci set system.@system[0].lang=zh_Hans/' package/base-files/files/bin/config_generate 2>/dev/null || true
+
+      - name: Check for changes
+        id: changed
+        run: |
+          git status --porcelain > changes.txt
+          if [ -s changes.txt ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changes=$(cat changes.txt)" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          git add -A
+          git commit -m "chore: sync with upstream $(date +%Y-%m-%d)"
+          git push origin master
+          echo "::notice::Upstream sync committed and pushed"

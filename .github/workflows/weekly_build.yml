@@ -150,6 +150,7 @@ jobs:
           SIZE=$(du -h "$NEW_NAME" | cut -f1)
           SHA256=$(sha256sum "$NEW_NAME" | cut -d' ' -f1)
           echo "firmware=$NEW_NAME" >> $GITHUB_OUTPUT
+          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
           echo "size=$SIZE" >> $GITHUB_OUTPUT
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
           echo "=== $NEW_NAME ($SIZE) ==="
@@ -159,8 +160,8 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: Z-ImmWrt-${{ env.BUILD_DATE }}
-          release_name: Z-ImmWrt-${{ env.BUILD_DATE }} by zuoxm
+          tag_name: Z-ImmWrt-${{ steps.firmware.outputs.build_date }}
+          release_name: Z-ImmWrt-${{ steps.firmware.outputs.build_date }} by zuoxm
           draft: false
           prerelease: false
           files: bin/targets/x86/64/Z-ImmWrt-*.img.gz

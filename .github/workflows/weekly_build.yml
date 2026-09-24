@@ -38,7 +38,14 @@ jobs:
         run: |
           echo "=== Syncing upstream ==="
           git fetch upstream master --depth=1
-          git merge upstream/master --no-edit --allow-unrelated-histories
+          git merge upstream/master --no-edit --allow-unrelated-histories || true
+          # Auto-resolve feeds.conf.default conflict: prefer upstream
+          if [ -f feeds.conf.default ]; then
+            git checkout --ours feeds.conf.default 2>/dev/null || true
+            git add feeds.conf.default
+          fi
+          git checkout --ours feeds.conf.default || true
+          git add feeds.conf.default
           echo "=== Sync complete ==="
           git log --oneline HEAD~3..HEAD
 

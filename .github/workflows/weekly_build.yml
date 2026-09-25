@@ -27,6 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+    permissions: write-all
           persist-credentials: true
 
       - name: Configure git

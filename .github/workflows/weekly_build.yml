@@ -104,6 +104,15 @@ jobs:
           echo "Z-ImmortalWrt $(date +"%Y%m%d%H%M") by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
           echo "✅ Overlay files ready"
 
+      # ========== Inject build timestamp ==========
+      - name: Inject build timestamp
+        run: |
+          echo "=== Injecting build timestamp ==="
+          BUILD_TIME=$(date +"%Y%m%d%H%M")
+          sed -i "s/__BUILD_TIME__/${BUILD_TIME}/g" .config
+          echo "Build time: ${BUILD_TIME}"
+          echo "✅ Timestamp injected"
+
       # ========== Copy .config ==========
       - name: Copy .config
         run: |

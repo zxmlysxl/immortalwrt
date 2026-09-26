@@ -103,15 +103,6 @@ jobs:
           echo "Z-ImmortalWrt $(date +"%Y%m%d%H%M") by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
           echo "✅ Overlay files ready"
 
-      # ========== Inject build timestamp ==========
-      - name: Inject build timestamp
-        run: |
-          echo "=== Injecting build timestamp ==="
-          BUILD_TIME=$(date +"%Y%m%d%H%M")
-          sed -i "s/__BUILD_TIME__/${BUILD_TIME}/g" .config
-          echo "Build time: ${BUILD_TIME}"
-          echo "✅ Timestamp injected"
-
       # ========== Copy .config ==========
       - name: Copy .config
         run: |
@@ -128,7 +119,9 @@ jobs:
         run: |
           echo "CONFIG_GOLANG_MOD_CACHE_WORLD_READABLE=y" >> .config
           make defconfig
-          echo "✅ Configuration complete"
+          # 注入编译时间戳（在 make defconfig 之后，覆盖其重置的值）
+          sed -i "s/__BUILD_TIME__/$(date +\"%Y%m%d%H%M\")/g" .config
+          echo "✅ Configuration complete (VERSION_NUMBER injected)"
 
       # ========== Download sources ==========
       - name: Download sources
@@ -136,7 +129,16 @@ jobs:
           echo "=== Downloading sources ==="
           make download -j$(nproc)
 
+      # ========== Patch 10_system.js ==========
+      - name: Patch 10_system.js
+        run: |
+          echo "=== Patching 10_system.js ==="
+          mkdir -p feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include
+          cp files/10_system.js feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
+          echo "✅ 10_system.js patched"
+
       # ========== Compile firmware ==========
+
       - name: Compile firmware
         run: |
           echo "=== Compiling firmware (x86_64 EFI) ==="

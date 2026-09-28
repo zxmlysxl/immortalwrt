@@ -1,0 +1,8 @@
+#!/bin/sh
+
+[ -f /etc/config/frpc ] && exit 0
+
+touch /etc/config/frpc
+/etc/init.d/frpc enabled || /etc/init.d/frpc enable
+
+exit 0

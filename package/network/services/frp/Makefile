@@ -2,7 +2,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=frp
 PKG_VERSION:=0.70.1
-PKG_RELEASE:=1
+PKG_RELEASE:=2
+
+PKG_PROVIDES := frpc frps
 
 PKG_SOURCE:=$(PKG_NAME)_$(PKG_VERSION)_linux_x86_64.tar.gz
 PKG_HASH:=skip

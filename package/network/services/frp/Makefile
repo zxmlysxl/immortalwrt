@@ -5,7 +5,6 @@ PKG_VERSION:=0.70.1
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)_$(PKG_VERSION)_linux_x86_64.tar.gz
-PKG_SOURCE_URL:=https://github.com/fatedier/frp/releases/download/v$(PKG_VERSION)/
 PKG_HASH:=skip
 
 PKG_MAINTAINER:=zuoxm <zxmlysxl@gmail.com>

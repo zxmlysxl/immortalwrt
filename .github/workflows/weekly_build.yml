@@ -72,6 +72,8 @@ jobs:
           rm -f target/linux/generic/backport-6.18/784-06-v6.19-net-phy-realtek-Add-RTL8224-cable-testing-support.patch
           rm -f target/linux/generic/backport-6.18/784-07-v6.19-net-phy-realtek-add-interrupt-support-for-RTL8221B.patch
           rm -f target/linux/generic/backport-6.18/788-v7.0-net-phy-realtek-fix-whitespace-in-struct-phy_driver-.patch
+          rm -f target/linux/generic/backport-6.18/789-v7.0-net-phy-realtek-implement-configuring-in-band-an.patch
+          rm -f target/linux/generic/backport-6.18/790-v7.0-net-phy-realtek-use-paged-access-for-MDIO_MMD_VEND2-.patch
           rm -f target/linux/generic/backport-6.18/799-v7.2-net-phy-realtek-Add-support-for-PHY-LEDs-on-RTL8221B.patch
           # Stage deletions properly (git add <deleted_file> does NOT work)
           git add -u target/linux/generic/backport-6.18/

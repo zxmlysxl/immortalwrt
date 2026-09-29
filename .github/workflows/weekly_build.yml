@@ -77,6 +77,7 @@ jobs:
           rm -f target/linux/generic/backport-6.18/799-v7.2-net-phy-realtek-Add-support-for-PHY-LEDs-on-RTL8221B.patch
           rm -f target/linux/generic/backport-6.18/793-v7.0-net-phy-realtek-fix-in-band-capabilities-for-2.5G-PH.patch
           rm -f target/linux/generic/backport-6.18/794-v7.0-net-phy-realtek-support-interrupt-also-for-C22-varia.patch
+          rm -f target/linux/generic/backport-6.18/795-v7.0-net-phy-realtek-simplify-C22-reg-access-via-MDIO_MMD.patch
           # Stage deletions properly (git add <deleted_file> does NOT work)
           git add -u target/linux/generic/backport-6.18/
           git diff --cached --quiet || git commit -m "chore: drop broken backport-6.18 realtek PHY patches (re-applied by upstream sync)" --allow-empty 2>/dev/null || true

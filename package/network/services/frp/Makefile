@@ -41,7 +41,7 @@ endef
 
 define Download/frp
   FILE:=$(PKG_SOURCE)
-  URL:=$(PKG_SOURCE_URL)
+  URL:=https://github.com/fatedier/frp/releases/download/v$(PKG_VERSION)/
   HASH:=skip
 endef
 $(eval $(call Download,frp))

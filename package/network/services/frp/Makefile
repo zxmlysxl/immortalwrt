@@ -6,7 +6,7 @@ PKG_RELEASE:=2
 
 PKG_PROVIDES := frpc frps
 
-PKG_SOURCE:=$(PKG_NAME)_$(PKG_VERSION)_linux_x86_64.tar.gz
+PKG_SOURCE:=$(PKG_NAME)_$(PKG_VERSION)_linux_amd64.tar.gz
 PKG_HASH:=skip
 
 PKG_MAINTAINER:=zuoxm <zxmlysxl@gmail.com>

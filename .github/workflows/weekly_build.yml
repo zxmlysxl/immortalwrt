@@ -67,6 +67,15 @@ jobs:
           echo "=== Sync complete ==="
           git log --oneline -3
 
+          # Remove known-broken patches that upstream keeps re-adding
+          rm -f target/linux/generic/backport-6.18/784-06-v6.19-net-phy-realtek-Add-RTL8224-cable-testing-support.patch
+          if [ -f target/linux/generic/backport-6.18/784-06-v6.19-net-phy-realtek-Add-RTL8224-cable-testing-support.patch ]; then
+            echo "WARNING: Broken RTL8224 patch still present after removal attempt"
+          else
+            git add target/linux/generic/backport-6.18/784-06-v6.19-net-phy-realtek-Add-RTL8224-cable-testing-support.patch 2>/dev/null || true
+            git diff --cached --quiet || git commit -m "chore: drop broken backport-6.18 RTL8224 patch (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
+          fi
+
       # ========== Apply source patches (IP, hostname, timezone) ==========
       - name: Apply source patches
         run: |

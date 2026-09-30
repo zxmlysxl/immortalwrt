@@ -69,6 +69,7 @@ jobs:
 
           # Remove known-broken patches that upstream keeps re-adding
           # These patches are based on Linux 6.19+ and fail on 6.18.52
+          # Remove known-broken realtek PHY patches from backport-6.18/
           rm -f target/linux/generic/backport-6.18/784-06-v6.19-net-phy-realtek-Add-RTL8224-cable-testing-support.patch
           rm -f target/linux/generic/backport-6.18/784-07-v6.19-net-phy-realtek-add-interrupt-support-for-RTL8221B.patch
           rm -f target/linux/generic/backport-6.18/788-v7.0-net-phy-realtek-fix-whitespace-in-struct-phy_driver-.patch
@@ -82,9 +83,12 @@ jobs:
           rm -f target/linux/generic/backport-6.18/800-01-v7.3-net-phy-c45-add-genphy_c45_pma_soft_reset.patch
           rm -f target/linux/generic/backport-6.18/800-02-v7.3-net-phy-c45-add-setup-and-read-master-slave-helpers.patch
           rm -f target/linux/generic/backport-6.18/800-04-v7.3-net-phy-realtek-load-firmware-for-RTL8261C_CG.patch
-          # Stage deletions properly (git add <deleted_file> does NOT work)
-          git add -u target/linux/generic/backport-6.18/
-          git diff --cached --quiet || git commit -m "chore: drop broken backport-6.18 realtek PHY patches (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
+          # Remove known-broken realtek PHY patches from pending-6.18/
+          # These patches target Linux 6.19+ and fail on 6.18.52
+          rm -f target/linux/generic/pending-6.18/720-01-net-phy-realtek-use-genphy_soft_reset-for-2.5G-PHYs.patch
+          # Stage deletions properly (git add -u handles deleted files)
+          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/
+          git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
 
       # ========== Apply source patches (IP, hostname, timezone) ==========
       - name: Apply source patches

@@ -35,6 +35,44 @@ jobs:
           git config --global user.name "GitHub Actions"
           git remote add upstream https://github.com/immortalwrt/immortalwrt.git || true
 
+      # ========== Clean broken patches (always run, even with skip_sync) ==========
+      # Upstream keeps re-adding realtek PHY patches that target Linux 6.19+
+      # and fail on our Linux 6.18.52 kernel headers. Remove them unconditionally.
+      - name: Clean broken patches
+        run: |
+          echo "=== Cleaning broken realtek PHY patches ==="
+          # pending-6.18: all realtek PHY patches (720/721/722/742/743 series)
+          rm -f target/linux/generic/pending-6.18/720-*.patch
+          rm -f target/linux/generic/pending-6.18/721-*.patch
+          rm -f target/linux/generic/pending-6.18/722-*.patch
+          rm -f target/linux/generic/pending-6.18/742-*.patch
+          rm -f target/linux/generic/pending-6.18/743-*.patch
+          # backport-6.18: realtek PHY patches (784/788-800/941-944 series)
+          rm -f target/linux/generic/backport-6.18/784-*.patch
+          rm -f target/linux/generic/backport-6.18/788-*.patch
+          rm -f target/linux/generic/backport-6.18/789-*.patch
+          rm -f target/linux/generic/backport-6.18/790-*.patch
+          rm -f target/linux/generic/backport-6.18/791-*.patch
+          rm -f target/linux/generic/backport-6.18/792-*.patch
+          rm -f target/linux/generic/backport-6.18/793-*.patch
+          rm -f target/linux/generic/backport-6.18/794-*.patch
+          rm -f target/linux/generic/backport-6.18/795-*.patch
+          rm -f target/linux/generic/backport-6.18/796-*.patch
+          rm -f target/linux/generic/backport-6.18/797-*.patch
+          rm -f target/linux/generic/backport-6.18/798-*.patch
+          rm -f target/linux/generic/backport-6.18/799-*.patch
+          rm -f target/linux/generic/backport-6.18/800-*.patch
+          rm -f target/linux/generic/backport-6.18/941-*.patch
+          rm -f target/linux/generic/backport-6.18/942-*.patch
+          rm -f target/linux/generic/backport-6.18/943-*.patch
+          rm -f target/linux/generic/backport-6.18/944-*.patch
+          # hack-6.18: realtek PHY patches
+          rm -f target/linux/generic/hack-6.18/750-net-phy-realtek-add-rtl8261c-led-support.patch
+          # Stage deletions
+          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/
+          git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches" --allow-empty 2>/dev/null || true
+          echo "=== Patch cleanup done ==="
+
       # ========== Sync upstream ==========
       - name: Sync upstream
         if: inputs.skip_sync != 'true'
@@ -66,15 +104,34 @@ jobs:
           }
           echo "=== Sync complete ==="
           git log --oneline -3
-
-          # Remove known-broken patches that upstream keeps re-adding
-          rm -f target/linux/generic/backport-6.18/784-06-v6.19-net-phy-realtek-Add-RTL8224-cable-testing-support.patch
-          if [ -f target/linux/generic/backport-6.18/784-06-v6.19-net-phy-realtek-Add-RTL8224-cable-testing-support.patch ]; then
-            echo "WARNING: Broken RTL8224 patch still present after removal attempt"
-          else
-            git add target/linux/generic/backport-6.18/784-06-v6.19-net-phy-realtek-Add-RTL8224-cable-testing-support.patch 2>/dev/null || true
-            git diff --cached --quiet || git commit -m "chore: drop broken backport-6.18 RTL8224 patch (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
-          fi
+          # Re-clean after sync in case upstream re-introduced any patches
+          rm -f target/linux/generic/pending-6.18/720-*.patch
+          rm -f target/linux/generic/pending-6.18/721-*.patch
+          rm -f target/linux/generic/pending-6.18/722-*.patch
+          rm -f target/linux/generic/pending-6.18/742-*.patch
+          rm -f target/linux/generic/pending-6.18/743-*.patch
+          rm -f target/linux/generic/backport-6.18/784-*.patch
+          rm -f target/linux/generic/backport-6.18/788-*.patch
+          rm -f target/linux/generic/backport-6.18/789-*.patch
+          rm -f target/linux/generic/backport-6.18/790-*.patch
+          rm -f target/linux/generic/backport-6.18/791-*.patch
+          rm -f target/linux/generic/backport-6.18/792-*.patch
+          rm -f target/linux/generic/backport-6.18/793-*.patch
+          rm -f target/linux/generic/backport-6.18/794-*.patch
+          rm -f target/linux/generic/backport-6.18/795-*.patch
+          rm -f target/linux/generic/backport-6.18/796-*.patch
+          rm -f target/linux/generic/backport-6.18/797-*.patch
+          rm -f target/linux/generic/backport-6.18/798-*.patch
+          rm -f target/linux/generic/backport-6.18/799-*.patch
+          rm -f target/linux/generic/backport-6.18/800-*.patch
+          rm -f target/linux/generic/backport-6.18/941-*.patch
+          rm -f target/linux/generic/backport-6.18/942-*.patch
+          rm -f target/linux/generic/backport-6.18/943-*.patch
+          rm -f target/linux/generic/backport-6.18/944-*.patch
+          # hack-6.18: realtek PHY patches
+          rm -f target/linux/generic/hack-6.18/750-net-phy-realtek-add-rtl8261c-led-support.patch
+          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/
+          git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
 
       # ========== Apply source patches (IP, hostname, timezone) ==========
       - name: Apply source patches
@@ -109,7 +166,7 @@ jobs:
         run: |
           echo "=== Copying overlay files ==="
           mkdir -p files/etc
-          echo "Z-ImmortalWrt $(date +"%Y%m%d%H%M") by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
+          echo "Z-ImmortalWrt $(date +"%Y%m%d%H%I") by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
           echo "✅ Overlay files ready"
 
       # ========== Copy .config ==========

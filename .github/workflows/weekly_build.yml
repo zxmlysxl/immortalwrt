@@ -208,7 +208,6 @@ jobs:
       - name: Compile firmware
         run: |
           echo "=== Compiling firmware (x86_64 EFI) ==="
-          make package/feeds/zuoxm/hysteria/compile V=s -j1 || true
           make -j$(nproc) V=s 2>&1 | tee build.log
           BUILD_STATUS=${PIPESTATUS[0]}
           if [ $BUILD_STATUS -ne 0 ]; then

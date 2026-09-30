@@ -81,6 +81,7 @@ jobs:
           rm -f target/linux/generic/backport-6.18/796-v7.0-net-phy-realtek-reunify-C22-and-C45-drivers.patch
           rm -f target/linux/generic/backport-6.18/800-01-v7.3-net-phy-c45-add-genphy_c45_pma_soft_reset.patch
           rm -f target/linux/generic/backport-6.18/800-02-v7.3-net-phy-c45-add-setup-and-read-master-slave-helpers.patch
+          rm -f target/linux/generic/backport-6.18/800-04-v7.3-net-phy-realtek-load-firmware-for-RTL8261C_CG.patch
           # Stage deletions properly (git add <deleted_file> does NOT work)
           git add -u target/linux/generic/backport-6.18/
           git diff --cached --quiet || git commit -m "chore: drop broken backport-6.18 realtek PHY patches (re-applied by upstream sync)" --allow-empty 2>/dev/null || true

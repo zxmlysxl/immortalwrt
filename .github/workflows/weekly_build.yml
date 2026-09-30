@@ -66,8 +66,10 @@ jobs:
           rm -f target/linux/generic/backport-6.18/942-*.patch
           rm -f target/linux/generic/backport-6.18/943-*.patch
           rm -f target/linux/generic/backport-6.18/944-*.patch
+          # hack-6.18: realtek PHY patches
+          rm -f target/linux/generic/hack-6.18/750-net-phy-realtek-add-rtl8261c-led-support.patch
           # Stage deletions
-          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/
+          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/
           git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches" --allow-empty 2>/dev/null || true
           echo "=== Patch cleanup done ==="
 
@@ -126,7 +128,9 @@ jobs:
           rm -f target/linux/generic/backport-6.18/942-*.patch
           rm -f target/linux/generic/backport-6.18/943-*.patch
           rm -f target/linux/generic/backport-6.18/944-*.patch
-          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/
+          # hack-6.18: realtek PHY patches
+          rm -f target/linux/generic/hack-6.18/750-net-phy-realtek-add-rtl8261c-led-support.patch
+          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/
           git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
 
       # ========== Apply source patches (IP, hostname, timezone) ==========

@@ -298,26 +298,10 @@ jobs:
     if: failure()
     runs-on: ubuntu-latest
     steps:
-      - name: Determine retry count
-        id: retry_info
-        run: |
-          CURRENT=${{ inputs.retry_count || '0' }}
-          MAX=5
-          if [ "$CURRENT" -ge "$MAX" ]; then
-            echo "max_reached=true" >> $GITHUB_OUTPUT
-            echo "msg::❌ Max retries ($MAX) reached, giving up. Please fix manually."
-          else
-            NEXT=$((CURRENT + 1))
-            echo "max_reached=false" >> $GITHUB_OUTPUT
-            echo "next_retry=$NEXT" >> $GITHUB_OUTPUT
-            echo "msg::🔁 Retrying (attempt $NEXT/$MAX) with cached sources..." >> $GITHUB_STEP_SUMMARY
-          fi
-
       - name: Trigger retry with cached sources
-        if: steps.retry_info.outputs.max_reached != 'true'
         run: |
-          NEXT=${{ steps.retry_info.outputs.next_retry }}
-          echo "🔁 Triggering retry #${NEXT}..."
+          NEXT=$(( ${{ inputs.retry_count || '0' }} + 1 ))
+          echo "🔁 Retrying (attempt $NEXT) with cached sources..."
           gh workflow run weekly_build.yml \
             -f skip_sync=true \
             -f retry_count=${NEXT} \

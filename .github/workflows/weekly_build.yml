@@ -68,6 +68,8 @@ jobs:
           rm -f target/linux/generic/backport-6.18/944-*.patch
           # hack-6.18: realtek PHY patches
           rm -f target/linux/generic/hack-6.18/750-net-phy-realtek-add-rtl8261c-led-support.patch
+          # backport-6.18: MHI pci_generic patch incompatible with Linux 6.18.54
+          rm -f target/linux/generic/backport-6.18/706-v7.2-bus-mhi-host-pci_generic-round-up-nr_irqs-to-a-power-of-two.patch
           # Stage deletions
           git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/
           git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches" --allow-empty 2>/dev/null || true
@@ -130,8 +132,10 @@ jobs:
           rm -f target/linux/generic/backport-6.18/944-*.patch
           # hack-6.18: realtek PHY patches
           rm -f target/linux/generic/hack-6.18/750-net-phy-realtek-add-rtl8261c-led-support.patch
+          # backport-6.18: MHI pci_generic patch incompatible with Linux 6.18.54
+          rm -f target/linux/generic/backport-6.18/706-v7.2-bus-mhi-host-pci_generic-round-up-nr_irqs-to-a-power-of-two.patch
           git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/
-          git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches and MHI patch (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
 
       # ========== Apply source patches (IP, hostname, timezone) ==========
       - name: Apply source patches

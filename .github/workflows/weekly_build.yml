@@ -67,6 +67,8 @@ jobs:
           rm -f target/linux/generic/backport-6.18/798-*.patch
           rm -f target/linux/generic/backport-6.18/799-*.patch
           rm -f target/linux/generic/backport-6.18/800-*.patch
+          # backport-6.18: mt7530 EEE patch incompatible with Linux 6.18.54
+          rm -f target/linux/generic/backport-6.18/946-*.patch
           rm -f target/linux/generic/backport-6.18/941-*.patch
           rm -f target/linux/generic/backport-6.18/942-*.patch
           rm -f target/linux/generic/backport-6.18/943-*.patch
@@ -131,6 +133,8 @@ jobs:
           rm -f target/linux/generic/backport-6.18/798-*.patch
           rm -f target/linux/generic/backport-6.18/799-*.patch
           rm -f target/linux/generic/backport-6.18/800-*.patch
+          # backport-6.18: mt7530 EEE patch incompatible with Linux 6.18.54
+          rm -f target/linux/generic/backport-6.18/946-*.patch
           rm -f target/linux/generic/backport-6.18/941-*.patch
           rm -f target/linux/generic/backport-6.18/942-*.patch
           rm -f target/linux/generic/backport-6.18/943-*.patch
@@ -298,6 +302,10 @@ jobs:
     if: failure()
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Trigger retry with cached sources
         run: |
           NEXT=$(( ${{ inputs.retry_count || '0' }} + 1 ))

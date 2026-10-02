@@ -75,6 +75,8 @@ jobs:
           rm -f target/linux/generic/backport-6.18/944-*.patch
           # hack-6.18: realtek PHY patches
           rm -f target/linux/generic/hack-6.18/750-net-phy-realtek-add-rtl8261c-led-support.patch
+          # hack-6.18: serial 8250 UPIO_AU duplicate (upstream 6.18.54 already includes it)
+          rm -f target/linux/generic/hack-6.18/890-serial-8250-add-UPIO_AU-case-to-set_io_from_upio.patch
           # backport-6.18: MHI pci_generic patch incompatible with Linux 6.18.54
           rm -f target/linux/generic/backport-6.18/706-v7.2-bus-mhi-host-pci_generic-round-up-nr_irqs-to-a-power-of-two.patch
           # Stage deletions
@@ -141,6 +143,8 @@ jobs:
           rm -f target/linux/generic/backport-6.18/944-*.patch
           # hack-6.18: realtek PHY patches
           rm -f target/linux/generic/hack-6.18/750-net-phy-realtek-add-rtl8261c-led-support.patch
+          # hack-6.18: serial 8250 UPIO_AU duplicate (upstream 6.18.54 already includes it)
+          rm -f target/linux/generic/hack-6.18/890-serial-8250-add-UPIO_AU-case-to-set_io_from_upio.patch
           # backport-6.18: MHI pci_generic patch incompatible with Linux 6.18.54
           rm -f target/linux/generic/backport-6.18/706-v7.2-bus-mhi-host-pci_generic-round-up-nr_irqs-to-a-power-of-two.patch
           git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/

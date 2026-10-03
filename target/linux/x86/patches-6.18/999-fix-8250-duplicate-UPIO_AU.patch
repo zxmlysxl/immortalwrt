@@ -1,0 +1,12 @@
+--- a/drivers/tty/serial/8250/8250_port.c
++++ b/drivers/tty/serial/8250/8250_port.c
+@@ -459,9 +459,6 @@ static void set_io_from_upio(struct uart_8250_port *p)
+ 		case UPIO_AU:
+ 			p->port.iobase = up->port.iobase;
+ 			p->port.mapsize = up->port.mapsize;
+-			break;
+-		case UPIO_AU:
+-			p->port.iobase = up->port.iobase;
+ 			break;
+ 		case UPIO_PORT:
+ 			p->port.iobase = up->port.iobase;

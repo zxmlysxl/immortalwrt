@@ -202,6 +202,9 @@ jobs:
         run: |
           echo "CONFIG_GOLANG_MOD_CACHE_WORLD_READABLE=y" >> .config
           make defconfig
+          # 解决 .config 递归依赖错误（defconfig 后新增选项会导致 oldconfig 需要交互）
+          # 用 yes "" | oldconfig 自动接受默认值，一路回车即可
+          yes "" | make oldconfig
           # 注入编译时间戳（在 make defconfig 之后，覆盖其重置的值）
           sed -i "s/__BUILD_TIME__/$(date +\"%Y%m%d%H%M\")/g" .config
           echo "✅ Configuration complete (VERSION_NUMBER injected)"

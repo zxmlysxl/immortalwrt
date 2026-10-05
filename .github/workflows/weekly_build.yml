@@ -242,13 +242,13 @@ jobs:
       - name: Compile firmware
         id: compile
         run: |
-          echo "=== Compiling firmware (x86_64 EFI, parallel=8) ==="
-          make -j8 V=s 2>&1 | tee build.log
+          echo "=== Compiling firmware (x86_64 EFI, parallel=\$(nproc)) ==="
+          make -j$(nproc) V=s 2>&1 | tee build.log
           BUILD_STATUS=${PIPESTATUS[0]}
           if [ $BUILD_STATUS -ne 0 ]; then
-            echo "=== Retry with -j4 ==="
+            echo "=== Retry with -j8 ==="
             make clean >/dev/null 2>&1 || true
-            make -j4 V=s 2>&1 | tee -a build.log
+            make -j8 V=s 2>&1 | tee -a build.log
             BUILD_STATUS=${PIPESTATUS[0]}
           fi
           if [ $BUILD_STATUS -ne 0 ]; then

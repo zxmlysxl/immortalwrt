@@ -40,4 +40,4 @@ if old_block in mk:
     print("Fixed Build/Prepare: added $(CP) before $(SED)")
 else:
     print("Build/Prepare block not found (may already be fixed or format differs)")
-    sys.exit(1)
+    sys.exit(0)

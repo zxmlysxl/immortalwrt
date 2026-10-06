@@ -233,28 +233,12 @@ jobs:
           echo "=== Fixing luci-app-znetcontrol/Makefile ==="
           MAKEFILE="feeds/zuoxm/luci-app-znetcontrol/Makefile"
           if [ -f "$MAKEFILE" ]; then
-            # Fix 1: Lines 37-39 use 2 spaces for recipe indent (should be 	 for gmake)
-            sed -i '37,39s/^  /	/' "$MAKEFILE"
-            # Fix 2: Build/Prepare runs BEFORE unpack, so $(PKG_BUILD_DIR)/luasrc does not exist.
-            # The $(SED) line must be preceded by $(CP) ./luasrc to PKG_BUILD_DIR.
-            python3 << 'SEDPY'
-import re
-with open("feeds/zuoxm/luci-app-znetcontrol/Makefile", "r") as f:
-    mk = f.read()
-old_bp = "define Build/Prepare\n\t$(SED) 's|{{PKG_VERSION}}|$(PKG_VERSION)|g' $(PKG_BUILD_DIR)/luasrc/controller/znetcontrol.lua\nendef"
-new_bp = "define Build/Prepare\n\t$(CP) ./luasrc $(PKG_BUILD_DIR)/luasrc\n\t$(SED) 's/{{PKG_VERSION}}/$(PKG_VERSION)/g' $(PKG_BUILD_DIR)/luasrc/controller/znetcontrol.lua\nendef"
-if old_bp in mk:
-    mk = mk.replace(old_bp, new_bp)
-    with open("feeds/zuoxm/luci-app-znetcontrol/Makefile", "w") as f:
-        f.write(mk)
-    print("✅ Build/Prepare fixed")
-else:
-    print("⚠️ Build/Prepare block not found (may already be fixed or format differs)")
-SEDPY
+            python3 .github/workflows/scripts/fix-znetcontrol.py
             echo "✅ $MAKEFILE fixed"
           else
             echo "⚠️ $MAKEFILE not found, skipping"
           fi
+
 
 
       # ========== Compile firmware ==========

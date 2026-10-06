@@ -200,8 +200,12 @@ jobs:
       # ========== Configure build ==========
       - name: Configure build
         run: |
-          echo "CONFIG_GOLANG_MOD_CACHE_WORLD_READABLE=y" >> .config
+          # 清空旧的 .config，让 defconfig 基于当前 feeds 完全重新生成
+          # 解决 feeds 更新后旧配置与新包产生的循环依赖（mihomo-alpha ↔ mihomo-meta 等）
+          > .config
           make defconfig
+          # 追加必要的自定义配置
+          echo "CONFIG_GOLANG_MOD_CACHE_WORLD_READABLE=y" >> .config
           # 解决 .config 递归依赖错误（defconfig 后新增选项会导致 oldconfig 需要交互）
           # 用 yes "" | oldconfig 自动接受默认值，一路回车即可
           yes "" | make oldconfig

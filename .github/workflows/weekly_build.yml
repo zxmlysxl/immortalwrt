@@ -80,8 +80,10 @@ jobs:
           rm -f target/linux/generic/hack-6.18/890-serial-8250-add-UPIO_AU-case-to-set_io_from_upio.patch
           # backport-6.18: MHI pci_generic patch incompatible with Linux 6.18.54
           rm -f target/linux/generic/backport-6.18/706-v7.2-bus-mhi-host-pci_generic-round-up-nr_irqs-to-a-power-of-two.patch
+          # mediatek: realtek PHY patch targeting Linux 6.19+ kernel headers (upstream re-adds it on every sync)
+          rm -f target/linux/mediatek/patches-6.18/733-net-phy-realtek-support-LED-polarity-on-RTL8221B.patch
           # Stage deletions
-          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/
+          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/ target/linux/mediatek/patches-6.18/
           git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches" --allow-empty 2>/dev/null || true
           echo "=== Patch cleanup done ==="
 
@@ -148,7 +150,9 @@ jobs:
           rm -f target/linux/generic/hack-6.18/890-serial-8250-add-UPIO_AU-case-to-set_io_from_upio.patch
           # backport-6.18: MHI pci_generic patch incompatible with Linux 6.18.54
           rm -f target/linux/generic/backport-6.18/706-v7.2-bus-mhi-host-pci_generic-round-up-nr_irqs-to-a-power-of-two.patch
-          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/
+          # mediatek: realtek PHY patch targeting Linux 6.19+ kernel headers (upstream re-adds it on every sync)
+          rm -f target/linux/mediatek/patches-6.18/733-net-phy-realtek-support-LED-polarity-on-RTL8221B.patch
+          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/ target/linux/mediatek/patches-6.18/
           git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches and MHI patch (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
 
       # ========== Apply source patches (IP, hostname, timezone) ==========

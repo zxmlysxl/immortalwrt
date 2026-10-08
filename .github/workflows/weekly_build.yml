@@ -161,26 +161,7 @@ jobs:
           echo "=== Patching bpf-headers Makefile to skip backport patches ==="
           MAKEFILE="package/kernel/bpf-headers/Makefile"
           if [ -f "$MAKEFILE" ]; then
-            python3 << 'PYEOF'
-import re
-with open("package/kernel/bpf-headers/Makefile", "r") as f:
-    mk = f.read()
-old = "define Build/Patch\n\t$(Kernel/Patch/Default)\nendef"
-new = "define Build/Patch\n\t# No patches applied: bpf-headers uses base 6.12.x headers only\nendef"
-if old in mk:
-    mk = mk.replace(old, new)
-    with open("package/kernel/bpf-headers/Makefile", "w") as f:
-        f.write(mk)
-    print("✅ bpf-headers Build/Patch overridden to no-op")
-else:
-    mk2 = re.sub(r'(define Build/Patch\n)\s*\$\(Kernel/Patch/Default\)(\nendef)', r'\1\t# No patches applied: bpf-headers uses base 6.12.x headers only\2', mk)
-    if mk2 != mk:
-        with open("package/kernel/bpf-headers/Makefile", "w") as f:
-            f.write(mk2)
-        print("✅ bpf-headers Build/Patch overridden (alt method)")
-    else:
-        print("⚠️ bpf-headers Build/Patch already modified or format differs")
-PYEOF
+            python3 .github/workflows/scripts/fix-bpf-headers.py
           else
             echo "⚠️ $MAKEFILE not found, skipping"
           fi
@@ -264,31 +245,7 @@ PYEOF
           echo "=== Patching bpf-headers Makefile to skip backport patches ==="
           MAKEFILE="package/kernel/bpf-headers/Makefile"
           if [ -f "$MAKEFILE" ]; then
-            # Replace Build/Patch so it does nothing instead of applying backport patches
-            python3 << 'PYEOF'
-import re
-with open("package/kernel/bpf-headers/Makefile", "r") as f:
-    mk = f.read()
-
-# Replace the Build/Patch definition with a no-op
-old = "define Build/Patch\n\t$(Kernel/Patch/Default)\nendef"
-new = "define Build/Patch\n\t# No patches applied: bpf-headers uses base 6.12.x headers only\nendef"
-if old in mk:
-    mk = mk.replace(old, new)
-    with open("package/kernel/bpf-headers/Makefile", "w") as f:
-        f.write(mk)
-    print("✅ bpf-headers Build/Patch overridden to no-op")
-else:
-    print("⚠️ Build/Patch block not found, trying alternative replace")
-    # Try replacing just the line inside
-    mk2 = re.sub(r'(define Build/Patch\n)\s*\$\(Kernel/Patch/Default\)(\nendef)', r'\1\t# No patches applied: bpf-headers uses base 6.12.x headers only\2', mk)
-    if mk2 != mk:
-        with open("package/kernel/bpf-headers/Makefile", "w") as f:
-            f.write(mk2)
-        print("✅ bpf-headers Build/Patch overridden (alt method)")
-    else:
-        print("❌ Could not patch bpf-headers Makefile")
-PYEOF
+            python3 .github/workflows/scripts/fix-bpf-headers.py
           else
             echo "⚠️ $MAKEFILE not found, skipping"
           fi

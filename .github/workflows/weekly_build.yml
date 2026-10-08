@@ -155,6 +155,36 @@ jobs:
           git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/ target/linux/mediatek/patches-6.18/
           git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches and MHI patch (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
 
+      # ========== Fix bpf-headers Makefile (re-applied after each sync) ==========
+      - name: Fix bpf-headers Makefile
+        run: |
+          echo "=== Patching bpf-headers Makefile to skip backport patches ==="
+          MAKEFILE="package/kernel/bpf-headers/Makefile"
+          if [ -f "$MAKEFILE" ]; then
+            python3 << 'PYEOF'
+import re
+with open("package/kernel/bpf-headers/Makefile", "r") as f:
+    mk = f.read()
+old = "define Build/Patch\n\t$(Kernel/Patch/Default)\nendef"
+new = "define Build/Patch\n\t# No patches applied: bpf-headers uses base 6.12.x headers only\nendef"
+if old in mk:
+    mk = mk.replace(old, new)
+    with open("package/kernel/bpf-headers/Makefile", "w") as f:
+        f.write(mk)
+    print("✅ bpf-headers Build/Patch overridden to no-op")
+else:
+    mk2 = re.sub(r'(define Build/Patch\n)\s*\$\(Kernel/Patch/Default\)(\nendef)', r'\1\t# No patches applied: bpf-headers uses base 6.12.x headers only\2', mk)
+    if mk2 != mk:
+        with open("package/kernel/bpf-headers/Makefile", "w") as f:
+            f.write(mk2)
+        print("✅ bpf-headers Build/Patch overridden (alt method)")
+    else:
+        print("⚠️ bpf-headers Build/Patch already modified or format differs")
+PYEOF
+          else
+            echo "⚠️ $MAKEFILE not found, skipping"
+          fi
+
       # ========== Apply source patches (IP, hostname, timezone) ==========
       - name: Apply source patches
         run: |
@@ -223,6 +253,45 @@ jobs:
         run: |
           echo "=== Downloading sources ==="
           make download -j$(nproc)
+
+      # ========== Fix bpf-headers Makefile (skip backport patches that target newer kernels) ==========
+      # bpf-headers builds Linux 6.12.x kernel headers and exports BPF syscall stubs.
+      # The backport-6.12/ directory contains patches for 6.13/6.14/6.15+ APIs which
+      # fail to apply on 6.12.x. Since bpf-headers only needs base syscall headers
+      # (not driver backports), skip all patching for this package entirely.
+      - name: Fix bpf-headers Makefile
+        run: |
+          echo "=== Patching bpf-headers Makefile to skip backport patches ==="
+          MAKEFILE="package/kernel/bpf-headers/Makefile"
+          if [ -f "$MAKEFILE" ]; then
+            # Replace Build/Patch so it does nothing instead of applying backport patches
+            python3 << 'PYEOF'
+import re
+with open("package/kernel/bpf-headers/Makefile", "r") as f:
+    mk = f.read()
+
+# Replace the Build/Patch definition with a no-op
+old = "define Build/Patch\n\t$(Kernel/Patch/Default)\nendef"
+new = "define Build/Patch\n\t# No patches applied: bpf-headers uses base 6.12.x headers only\nendef"
+if old in mk:
+    mk = mk.replace(old, new)
+    with open("package/kernel/bpf-headers/Makefile", "w") as f:
+        f.write(mk)
+    print("✅ bpf-headers Build/Patch overridden to no-op")
+else:
+    print("⚠️ Build/Patch block not found, trying alternative replace")
+    # Try replacing just the line inside
+    mk2 = re.sub(r'(define Build/Patch\n)\s*\$\(Kernel/Patch/Default\)(\nendef)', r'\1\t# No patches applied: bpf-headers uses base 6.12.x headers only\2', mk)
+    if mk2 != mk:
+        with open("package/kernel/bpf-headers/Makefile", "w") as f:
+            f.write(mk2)
+        print("✅ bpf-headers Build/Patch overridden (alt method)")
+    else:
+        print("❌ Could not patch bpf-headers Makefile")
+PYEOF
+          else
+            echo "⚠️ $MAKEFILE not found, skipping"
+          fi
 
       # ========== Patch 10_system.js ==========
       - name: Patch 10_system.js

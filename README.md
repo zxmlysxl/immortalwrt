@@ -92,3 +92,4 @@ gh workflow run weekly_build.yml --field skip_sync=true --repo zxmlysxl/immortal
 ## License
 
 基于 [GPL-2.0-only](https://spdx.org/licenses/GPL-2.0-only.html) 许可证。
+test 1791445037

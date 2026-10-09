@@ -216,18 +216,14 @@ jobs:
       # ========== Configure build ==========
       - name: Configure build
         run: |
-          # 清空旧的 .config，让 defconfig 基于当前 feeds 完全重新生成
-          # 解决 feeds 更新后旧配置与新包产生的循环依赖（mihomo-alpha ↔ mihomo-meta 等）
-          > .config
-          make defconfig
+          # 不要清空 .config！保留 committed 的 x86_64 配置
+          # make oldconfig 会自动新增 feeds 带来的新选项（无需交互，一路回车）
+          yes "" | make oldconfig
           # 追加必要的自定义配置
           echo "CONFIG_GOLANG_MOD_CACHE_WORLD_READABLE=y" >> .config
-          # 解决 .config 递归依赖错误（defconfig 后新增选项会导致 oldconfig 需要交互）
-          # 用 yes "" | oldconfig 自动接受默认值，一路回车即可
-          yes "" | make oldconfig
-          # 注入编译时间戳（在 make defconfig 之后，覆盖其重置的值）
+          # 注入编译时间戳
           sed -i "s/__BUILD_TIME__/$(date +\"%Y%m%d%H%M\")/g" .config
-          echo "✅ Configuration complete (VERSION_NUMBER injected)"
+          echo "✅ Configuration complete (x86_64 config preserved, VERSION_NUMBER injected)"
 
       # ========== Download sources ==========
       - name: Download sources
@@ -304,13 +300,29 @@ jobs:
       - name: Find and rename firmware
         id: firmware
         run: |
-          cd bin/targets/x86/64
+          # Dynamically discover firmware — no hardcoded target path
+          FIRMAGE_DIR=$(find bin/targets -maxdepth 2 -type d 2>/dev/null | while read d; do
+            if ls "$d"/*.img.gz 2>/dev/null | grep -q .; then echo "$d"; fi
+          done | head -1)
+          if [ -z "$FIRMAGE_DIR" ]; then
+            echo "❌ No firmware found in bin/targets/"
+            find bin/targets -name "*.img.gz" 2>/dev/null | head -10 || true
+            exit 1
+          fi
+          echo "📁 Firmware dir: $FIRMAGE_DIR"
+          cd "$FIRMAGE_DIR"
           BUILD_DATE=$(date +"%Y%m%d")
           FIRMWARE=$(ls -t *-efi.img.gz 2>/dev/null | grep -v "^Z-ImmWrt" | head -1)
           if [ -z "$FIRMWARE" ]; then
             FIRMWARE=$(ls -t *.img.gz 2>/dev/null | head -1)
           fi
-          NEW_NAME="Z-ImmWrt-${BUILD_DATE}-zuoxm-x86_64-efi.img.gz"
+          if [ -z "$FIRMWARE" ]; then
+            echo "❌ No firmware .img.gz found in $FIRMAGE_DIR"
+            ls -lh
+            exit 1
+          fi
+          TARGET_NAME=$(echo "$FIRMAGE_DIR" | sed 's|bin/targets/||' | tr '/' '-')
+          NEW_NAME="Z-ImmWrt-${BUILD_DATE}-zuoxm-${TARGET_NAME}-efi.img.gz"
           mv "$FIRMWARE" "$NEW_NAME"
           SIZE=$(du -h "$NEW_NAME" | cut -f1)
           SHA256=$(sha256sum "$NEW_NAME" | cut -d' ' -f1)
@@ -341,7 +353,7 @@ jobs:
           name: Z-ImmWrt-${{ steps.firmware.outputs.build_date }} by zuoxm
           draft: false
           prerelease: false
-          files: bin/targets/x86/64/Z-ImmWrt-*.img.gz
+          files: bin/targets/*/*/Z-ImmWrt-*.img.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -352,7 +364,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Firmware | Z-ImmWrt-${{ steps.firmware.outputs.build_date }}-zuoxm-x86_64-efi.img.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firmware | ${{ steps.firmware.outputs.firmware }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Size | ${{ steps.firmware.outputs.size }} |" >> $GITHUB_STEP_SUMMARY
           echo "| SHA256 | \`${{ steps.firmware.outputs.sha256 }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`$(git log --oneline -1)\` |" >> $GITHUB_STEP_SUMMARY

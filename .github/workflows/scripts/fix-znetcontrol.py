@@ -19,16 +19,17 @@ else:
 
 # Fix 2: Build/Prepare runs BEFORE unpack, so $(PKG_BUILD_DIR)/luasrc doesn't exist.
 # Insert $(CP) ./luasrc $(PKG_BUILD_DIR)/luasrc before $(SED) line.
+# Note: upstream uses | as sed delimiter, not /
 old_block = (
     "define Build/Prepare\n"
-    "\t$(SED) 's/{{PKG_VERSION}}/$(PKG_VERSION)/g' "
+    "\t$(SED) 's|{{PKG_VERSION}}|$(PKG_VERSION)|g' "
     "$(PKG_BUILD_DIR)/luasrc/controller/znetcontrol.lua\n"
     "endef"
 )
 new_block = (
     "define Build/Prepare\n"
     "\t$(CP) ./luasrc $(PKG_BUILD_DIR)/luasrc\n"
-    "\t$(SED) 's/{{PKG_VERSION}}/$(PKG_VERSION)/g' "
+    "\t$(SED) 's|{{PKG_VERSION}}|$(PKG_VERSION)|g' "
     "$(PKG_BUILD_DIR)/luasrc/controller/znetcontrol.lua\n"
     "endef"
 )

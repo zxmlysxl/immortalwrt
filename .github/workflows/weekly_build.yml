@@ -18,9 +18,9 @@ on:
 
 env:
   TZ: Asia/Shanghai
-  CCACHE_DIR: /ccache
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
   CCACHE_MAXSIZE: 10G
-  GOLANG_MOD_CACHE_DIR: /go/mod/cache
+  GOLANG_MOD_CACHE_DIR: ${{ github.workspace }}/.go_mod_cache
 
 permissions:
   contents: write
@@ -278,21 +278,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            /ccache
-            /go/mod/cache
-            /go/gocache
+            ${{ github.workspace }}/.ccache
+            ${{ github.workspace }}/.go_mod_cache
+            ${{ github.workspace }}/.go_gocache
             ./staging_dir
             ./build_dir
-          key: immwrt-${{ runner.os }}-v2-${{ hashFiles('.config') }}
+          key: immwrt-${{ runner.os }}-${{ hashFiles('.config') }}
           restore-keys: |
-            immwrt-${{ runner.os }}-v2-
+            immwrt-${{ runner.os }}-
 
       # ========== Compile firmware ==========
 
       - name: Compile firmware
         id: compile
         run: |
-          mkdir -p /ccache /go/mod/cache /go/gocache
+          mkdir -p ${{ github.workspace }}/.ccache ${{ github.workspace }}/.go_mod_cache ${{ github.workspace }}/.go_gocache
           echo "=== Compiling firmware (x86_64 EFI, ccache enabled) ==="
           echo "=== ccache stats before: ==="
           ccache -s || true
@@ -324,12 +324,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            /ccache
-            /go/mod/cache
-            /go/gocache
+            ${{ github.workspace }}/.ccache
+            ${{ github.workspace }}/.go_mod_cache
+            ${{ github.workspace }}/.go_gocache
             ./staging_dir
             ./build_dir
-          key: immwrt-${{ runner.os }}-v2-${{ hashFiles('.config') }}
+          key: immwrt-${{ runner.os }}-${{ hashFiles('.config') }}
 
       # ========== Find & rename firmware ==========
       - name: Find and rename firmware

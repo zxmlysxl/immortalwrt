@@ -50,6 +50,18 @@ jobs:
             fi
           fi
 
+      # Remove known-broken backport patches that upstream keeps re-adding
+      # These are for Linux 6.19+ and fail on our Linux 6.18.52 kernel headers
+      - name: Drop broken backport patches
+        run: |
+          rm -f target/linux/generic/backport-6.18/*realtek*.patch
+          rm -f target/linux/generic/backport-6.18/731-01-v7.3-net-phy-c45-add-genphy_c45_pma_soft_reset.patch
+          rm -f target/linux/generic/backport-6.18/731-02-v7.3-net-phy-c45-add-setup-and-read-master-slave-helpers.patch
+          rm -f target/linux/generic/backport-6.18/800-01-v7.3-net-phy-c45-add-genphy_c45_pma_soft_reset.patch
+          rm -f target/linux/generic/backport-6.18/800-02-v7.3-net-phy-c45-add-setup-and-read-master-slave-helpers.patch
+          git add -u target/linux/generic/backport-6.18/
+          git diff --cached --quiet || git commit -m "chore: drop broken backport patches after upstream sync" --allow-empty 2>/dev/null || true
+
       - name: Apply IP/hostname patches
         run: |
           sed -i 's/192\.168\.1\.1/192.168.32.10/g' package/base-files/files/bin/config_generate 2>/dev/null || true

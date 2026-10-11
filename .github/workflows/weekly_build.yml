@@ -2,7 +2,7 @@ name: Build ImmortalWrt x86_64
 
 on:
   schedule:
-    - cron: '0 9 * * 5'
+    - cron: '0 9 * * 1'
   workflow_dispatch:
     inputs:
       skip_sync:
@@ -10,12 +10,22 @@ on:
         required: false
         default: 'false'
         type: boolean
+      retry_count:
+        description: 'Retry count (auto-set, do not manually set)'
+        required: false
+        default: '0'
+        type: string
 
 env:
   TZ: Asia/Shanghai
+  CCACHE_DIR: /ccache
+  CCACHE_MAXSIZE: 10G
+  GOLANG_MOD_CACHE_DIR: /go/mod/cache
+  MAKEFLAGS: "CCACHE_DIR=/ccache CC=ccache CXX=ccache GOCACHE=/go/gocache"
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   build:
@@ -34,6 +44,51 @@ jobs:
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git remote add upstream https://github.com/immortalwrt/immortalwrt.git || true
+
+      # ========== Clean broken patches (always run, even with skip_sync) ==========
+      # Upstream keeps re-adding realtek PHY patches that target Linux 6.19+
+      # and fail on our Linux 6.18.54 kernel headers. Remove them unconditionally.
+      - name: Clean broken patches
+        run: |
+          echo "=== Cleaning broken patches ==="
+          # pending-6.18: all realtek PHY patches (720/721/722/742/743 series)
+          rm -f target/linux/generic/pending-6.18/720-*.patch
+          rm -f target/linux/generic/pending-6.18/721-*.patch
+          rm -f target/linux/generic/pending-6.18/722-*.patch
+          rm -f target/linux/generic/pending-6.18/742-*.patch
+          rm -f target/linux/generic/pending-6.18/743-*.patch
+          # backport-6.18: realtek PHY patches (784/788-800/941-944/946 series)
+          rm -f target/linux/generic/backport-6.18/784-*.patch
+          rm -f target/linux/generic/backport-6.18/788-*.patch
+          rm -f target/linux/generic/backport-6.18/789-*.patch
+          rm -f target/linux/generic/backport-6.18/790-*.patch
+          rm -f target/linux/generic/backport-6.18/791-*.patch
+          rm -f target/linux/generic/backport-6.18/792-*.patch
+          rm -f target/linux/generic/backport-6.18/793-*.patch
+          rm -f target/linux/generic/backport-6.18/794-*.patch
+          rm -f target/linux/generic/backport-6.18/795-*.patch
+          rm -f target/linux/generic/backport-6.18/796-*.patch
+          rm -f target/linux/generic/backport-6.18/797-*.patch
+          rm -f target/linux/generic/backport-6.18/798-*.patch
+          rm -f target/linux/generic/backport-6.18/799-*.patch
+          rm -f target/linux/generic/backport-6.18/800-*.patch
+          rm -f target/linux/generic/backport-6.18/941-*.patch
+          rm -f target/linux/generic/backport-6.18/942-*.patch
+          rm -f target/linux/generic/backport-6.18/943-*.patch
+          rm -f target/linux/generic/backport-6.18/944-*.patch
+          rm -f target/linux/generic/backport-6.18/946-*.patch
+          # hack-6.18: realtek PHY patches
+          rm -f target/linux/generic/hack-6.18/750-net-phy-realtek-add-rtl8261c-led-support.patch
+          # hack-6.18: serial 8250 UPIO_AU duplicate (upstream 6.18.54 already includes it)
+          rm -f target/linux/generic/hack-6.18/890-serial-8250-add-UPIO_AU-case-to-set_io_from_upio.patch
+          # backport-6.18: MHI pci_generic patch incompatible with Linux 6.18.54
+          rm -f target/linux/generic/backport-6.18/706-v7.2-bus-mhi-host-pci_generic-round-up-nr_irqs-to-a-power-of-two.patch
+          # mediatek: realtek PHY patch targeting Linux 6.19+ kernel headers (upstream re-adds it on every sync)
+          rm -f target/linux/mediatek/patches-6.18/733-net-phy-realtek-support-LED-polarity-on-RTL8221B.patch
+          # Stage deletions
+          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/ target/linux/mediatek/patches-6.18/
+          git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches" --allow-empty 2>/dev/null || true
+          echo "=== Patch cleanup done ==="
 
       # ========== Sync upstream ==========
       - name: Sync upstream
@@ -66,21 +121,53 @@ jobs:
           }
           echo "=== Sync complete ==="
           git log --oneline -3
+          # Re-clean after sync in case upstream re-introduced any patches
+          rm -f target/linux/generic/pending-6.18/720-*.patch
+          rm -f target/linux/generic/pending-6.18/721-*.patch
+          rm -f target/linux/generic/pending-6.18/722-*.patch
+          rm -f target/linux/generic/pending-6.18/742-*.patch
+          rm -f target/linux/generic/pending-6.18/743-*.patch
+          rm -f target/linux/generic/backport-6.18/784-*.patch
+          rm -f target/linux/generic/backport-6.18/788-*.patch
+          rm -f target/linux/generic/backport-6.18/789-*.patch
+          rm -f target/linux/generic/backport-6.18/790-*.patch
+          rm -f target/linux/generic/backport-6.18/791-*.patch
+          rm -f target/linux/generic/backport-6.18/792-*.patch
+          rm -f target/linux/generic/backport-6.18/793-*.patch
+          rm -f target/linux/generic/backport-6.18/794-*.patch
+          rm -f target/linux/generic/backport-6.18/795-*.patch
+          rm -f target/linux/generic/backport-6.18/796-*.patch
+          rm -f target/linux/generic/backport-6.18/797-*.patch
+          rm -f target/linux/generic/backport-6.18/798-*.patch
+          rm -f target/linux/generic/backport-6.18/799-*.patch
+          rm -f target/linux/generic/backport-6.18/800-*.patch
+          # backport-6.18: mt7530 EEE patch incompatible with Linux 6.18.54
+          rm -f target/linux/generic/backport-6.18/946-*.patch
+          rm -f target/linux/generic/backport-6.18/941-*.patch
+          rm -f target/linux/generic/backport-6.18/942-*.patch
+          rm -f target/linux/generic/backport-6.18/943-*.patch
+          rm -f target/linux/generic/backport-6.18/944-*.patch
+          # hack-6.18: realtek PHY patches
+          rm -f target/linux/generic/hack-6.18/750-net-phy-realtek-add-rtl8261c-led-support.patch
+          # hack-6.18: serial 8250 UPIO_AU duplicate (upstream 6.18.54 already includes it)
+          rm -f target/linux/generic/hack-6.18/890-serial-8250-add-UPIO_AU-case-to-set_io_from_upio.patch
+          # backport-6.18: MHI pci_generic patch incompatible with Linux 6.18.54
+          rm -f target/linux/generic/backport-6.18/706-v7.2-bus-mhi-host-pci_generic-round-up-nr_irqs-to-a-power-of-two.patch
+          # mediatek: realtek PHY patch targeting Linux 6.19+ kernel headers (upstream re-adds it on every sync)
+          rm -f target/linux/mediatek/patches-6.18/733-net-phy-realtek-support-LED-polarity-on-RTL8221B.patch
+          git add -u target/linux/generic/backport-6.18/ target/linux/generic/pending-6.18/ target/linux/generic/hack-6.18/ target/linux/mediatek/patches-6.18/
+          git diff --cached --quiet || git commit -m "chore: drop broken realtek PHY patches and MHI patch (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
 
-          # Remove known-broken patches that upstream keeps re-adding
-          # These patches are based on Linux 6.19+ and fail on 6.18.52
-          rm -f target/linux/generic/backport-6.18/784-06-v6.19-net-phy-realtek-Add-RTL8224-cable-testing-support.patch
-          rm -f target/linux/generic/backport-6.18/784-07-v6.19-net-phy-realtek-add-interrupt-support-for-RTL8221B.patch
-          rm -f target/linux/generic/backport-6.18/788-v7.0-net-phy-realtek-fix-whitespace-in-struct-phy_driver-.patch
-          rm -f target/linux/generic/backport-6.18/789-v7.0-net-phy-realtek-implement-configuring-in-band-an.patch
-          rm -f target/linux/generic/backport-6.18/790-v7.0-net-phy-realtek-use-paged-access-for-MDIO_MMD_VEND2-.patch
-          rm -f target/linux/generic/backport-6.18/799-v7.2-net-phy-realtek-Add-support-for-PHY-LEDs-on-RTL8221B.patch
-          rm -f target/linux/generic/backport-6.18/793-v7.0-net-phy-realtek-fix-in-band-capabilities-for-2.5G-PH.patch
-          rm -f target/linux/generic/backport-6.18/794-v7.0-net-phy-realtek-support-interrupt-also-for-C22-varia.patch
-          rm -f target/linux/generic/backport-6.18/795-v7.0-net-phy-realtek-simplify-C22-reg-access-via-MDIO_MMD.patch
-          # Stage deletions properly (git add <deleted_file> does NOT work)
-          git add -u target/linux/generic/backport-6.18/
-          git diff --cached --quiet || git commit -m "chore: drop broken backport-6.18 realtek PHY patches (re-applied by upstream sync)" --allow-empty 2>/dev/null || true
+      # ========== Fix bpf-headers Makefile (re-applied after each sync) ==========
+      - name: Fix bpf-headers Makefile
+        run: |
+          echo "=== Patching bpf-headers Makefile to skip backport patches ==="
+          MAKEFILE="package/kernel/bpf-headers/Makefile"
+          if [ -f "$MAKEFILE" ]; then
+            python3 .github/workflows/scripts/fix-bpf-headers.py
+          else
+            echo "⚠️ $MAKEFILE not found, skipping"
+          fi
 
       # ========== Apply source patches (IP, hostname, timezone) ==========
       - name: Apply source patches
@@ -108,14 +195,14 @@ jobs:
         run: |
           echo "=== Installing required tools ==="
           sudo apt-get update -qq
-          sudo apt-get install -y -qq qemu-utils genisoimage parted dosfstools
+          sudo apt-get install -y -qq qemu-utils genisoimage parted dosfstools ccache
 
       # ========== Copy overlay files ==========
       - name: Copy overlay files
         run: |
           echo "=== Copying overlay files ==="
           mkdir -p files/etc
-          echo "Z-ImmortalWrt $(date +"%Y%m%d%H%M") by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
+          echo "Z-ImmortalWrt $(date +"%Y%m%d%H%I") by zuoxm | R$(date +%y.%m.%d)" > files/etc/compile_info
           echo "✅ Overlay files ready"
 
       # ========== Copy .config ==========
@@ -132,17 +219,38 @@ jobs:
       # ========== Configure build ==========
       - name: Configure build
         run: |
-          echo "CONFIG_GOLANG_MOD_CACHE_WORLD_READABLE=y" >> .config
+          # 使用 make defconfig 而非 make oldconfig：
+          # Qt5 feed 包引入循环依赖，make oldconfig 遇到 recursive dependency error
+          # 后直接 exit 1，导致整个 step 失败。make defconfig 用默认值填充，
+          # 不交互，不受循环依赖影响，且 .config 已包含 CONFIG_TARGET_x86_64=y
+          # 所以 target 架构会被正确保留。
           make defconfig
-          # 注入编译时间戳（在 make defconfig 之后，覆盖其重置的值）
+          # 追加必要的自定义配置
+          echo "CONFIG_GOLANG_MOD_CACHE_WORLD_READABLE=y" >> .config
+          # 注入编译时间戳
           sed -i "s/__BUILD_TIME__/$(date +\"%Y%m%d%H%M\")/g" .config
-          echo "✅ Configuration complete (VERSION_NUMBER injected)"
+          echo "✅ Configuration complete (x86_64 config preserved via .config, VERSION_NUMBER injected)"
 
       # ========== Download sources ==========
       - name: Download sources
         run: |
           echo "=== Downloading sources ==="
           make download -j$(nproc)
+
+      # ========== Fix bpf-headers Makefile (skip backport patches that target newer kernels) ==========
+      # bpf-headers builds Linux 6.12.x kernel headers and exports BPF syscall stubs.
+      # The backport-6.12/ directory contains patches for 6.13/6.14/6.15+ APIs which
+      # fail to apply on 6.12.x. Since bpf-headers only needs base syscall headers
+      # (not driver backports), skip all patching for this package entirely.
+      - name: Fix bpf-headers Makefile
+        run: |
+          echo "=== Patching bpf-headers Makefile to skip backport patches ==="
+          MAKEFILE="package/kernel/bpf-headers/Makefile"
+          if [ -f "$MAKEFILE" ]; then
+            python3 .github/workflows/scripts/fix-bpf-headers.py
+          else
+            echo "⚠️ $MAKEFILE not found, skipping"
+          fi
 
       # ========== Patch 10_system.js ==========
       - name: Patch 10_system.js
@@ -152,38 +260,108 @@ jobs:
           cp files/10_system.js feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
           echo "✅ 10_system.js patched"
 
+      # ========== Fix znetcontrol Makefile (gmake 4.4+ strictness + Build/Prepare bug) ==========
+      - name: Fix znetcontrol Makefile
+        run: |
+          echo "=== Fixing luci-app-znetcontrol/Makefile ==="
+          MAKEFILE="feeds/zuoxm/luci-app-znetcontrol/Makefile"
+          if [ -f "$MAKEFILE" ]; then
+            python3 .github/workflows/scripts/fix-znetcontrol.py
+            echo "✅ $MAKEFILE fixed"
+          else
+            echo "⚠️ $MAKEFILE not found, skipping"
+          fi
+
+
+
+      # ========== Restore ccache/sstate cache ==========
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            /ccache
+            /go/mod/cache
+            /go/gocache
+            ./staging_dir
+            ./build_dir
+          key: immwrt-${{ runner.os }}-v2-${{ hashFiles('.config') }}
+          restore-keys: |
+            immwrt-${{ runner.os }}-v2-
+
       # ========== Compile firmware ==========
 
       - name: Compile firmware
+        id: compile
+        env:
+          CCACHE_DIR: /ccache
         run: |
-          echo "=== Compiling firmware (x86_64 EFI) ==="
-          make package/feeds/zuoxm/hysteria/compile V=s -j1 || true
+          mkdir -p /ccache /go/mod/cache /go/gocache
+          echo "=== Compiling firmware (x86_64 EFI, ccache enabled) ==="
+          echo "=== ccache stats before: ==="
+          ccache -s || true
           make -j$(nproc) V=s 2>&1 | tee build.log
           BUILD_STATUS=${PIPESTATUS[0]}
           if [ $BUILD_STATUS -ne 0 ]; then
-            echo "=== Retry with single thread ==="
-            make clean >/dev/null 2>&1 || true
+            echo "=== Retry with -j8 (no clean to save time) ==="
+            make -j8 V=s 2>&1 | tee -a build.log
+            BUILD_STATUS=${PIPESTATUS[0]}
+          fi
+          if [ $BUILD_STATUS -ne 0 ]; then
+            echo "=== Retry with single thread (no clean to save time) ==="
             make -j1 V=s 2>&1 | tee -a build.log
             BUILD_STATUS=${PIPESTATUS[0]}
           fi
           if [ $BUILD_STATUS -ne 0 ]; then
             echo "=== Build failed, last 50 lines: ==="
             tail -50 build.log
+            echo "::notice::Build failed with exit code $BUILD_STATUS"
             exit 1
           fi
           echo "✅ Build complete"
+          echo "=== ccache stats after: ==="
+          ccache -s || true
+
+      # ========== Save cache (always run to preserve build progress) ==========
+      - name: Save cache
+        if: always()
+        uses: actions/cache@v4
+        with:
+          path: |
+            /ccache
+            /go/mod/cache
+            /go/gocache
+            ./staging_dir
+            ./build_dir
+          key: immwrt-${{ runner.os }}-v2-${{ hashFiles('.config') }}
+          save-always: true
 
       # ========== Find & rename firmware ==========
       - name: Find and rename firmware
         id: firmware
         run: |
-          cd bin/targets/x86/64
+          # Dynamically discover firmware — no hardcoded target path
+          FIRMAGE_DIR=$(find bin/targets -maxdepth 2 -type d 2>/dev/null | while read d; do
+            if ls "$d"/*.img.gz 2>/dev/null | grep -q .; then echo "$d"; fi
+          done | head -1)
+          if [ -z "$FIRMAGE_DIR" ]; then
+            echo "❌ No firmware found in bin/targets/"
+            find bin/targets -name "*.img.gz" 2>/dev/null | head -10 || true
+            exit 1
+          fi
+          echo "📁 Firmware dir: $FIRMAGE_DIR"
+          cd "$FIRMAGE_DIR"
           BUILD_DATE=$(date +"%Y%m%d")
           FIRMWARE=$(ls -t *-efi.img.gz 2>/dev/null | grep -v "^Z-ImmWrt" | head -1)
           if [ -z "$FIRMWARE" ]; then
             FIRMWARE=$(ls -t *.img.gz 2>/dev/null | head -1)
           fi
-          NEW_NAME="Z-ImmWrt-${BUILD_DATE}-zuoxm-x86_64-efi.img.gz"
+          if [ -z "$FIRMWARE" ]; then
+            echo "❌ No firmware .img.gz found in $FIRMAGE_DIR"
+            ls -lh
+            exit 1
+          fi
+          TARGET_NAME=$(echo "$FIRMAGE_DIR" | sed 's|bin/targets/||' | tr '/' '-')
+          NEW_NAME="Z-ImmWrt-${BUILD_DATE}-zuoxm-${TARGET_NAME}-efi.img.gz"
           mv "$FIRMWARE" "$NEW_NAME"
           SIZE=$(du -h "$NEW_NAME" | cut -f1)
           SHA256=$(sha256sum "$NEW_NAME" | cut -d' ' -f1)
@@ -214,7 +392,7 @@ jobs:
           name: Z-ImmWrt-${{ steps.firmware.outputs.build_date }} by zuoxm
           draft: false
           prerelease: false
-          files: bin/targets/x86/64/Z-ImmWrt-*.img.gz
+          files: bin/targets/*/*/Z-ImmWrt-*.img.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -225,7 +403,30 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Firmware | Z-ImmWrt-${{ steps.firmware.outputs.build_date }}-zuoxm-x86_64-efi.img.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firmware | ${{ steps.firmware.outputs.firmware }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Size | ${{ steps.firmware.outputs.size }} |" >> $GITHUB_STEP_SUMMARY
           echo "| SHA256 | \`${{ steps.firmware.outputs.sha256 }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`$(git log --oneline -1)\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Retry count | ${{ inputs.retry_count || '0' }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ========== Auto-retry on failure ==========
+  retry:
+    needs: build
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Trigger retry with cached sources
+        run: |
+          NEXT=$(( ${{ inputs.retry_count || '0' }} + 1 ))
+          echo "🔁 Retrying (attempt $NEXT) with cached sources..."
+          gh workflow run weekly_build.yml \
+            -f skip_sync=true \
+            -f retry_count=${NEXT} \
+            --ref master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# trigger refresh 1791444540

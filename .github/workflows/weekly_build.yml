@@ -21,7 +21,6 @@ env:
   CCACHE_DIR: /ccache
   CCACHE_MAXSIZE: 10G
   GOLANG_MOD_CACHE_DIR: /go/mod/cache
-  MAKEFLAGS: "CCACHE_DIR=/ccache CC=ccache CXX=ccache GOCACHE=/go/gocache"
 
 permissions:
   contents: write
@@ -292,8 +291,6 @@ jobs:
 
       - name: Compile firmware
         id: compile
-        env:
-          CCACHE_DIR: /ccache
         run: |
           mkdir -p /ccache /go/mod/cache /go/gocache
           echo "=== Compiling firmware (x86_64 EFI, ccache enabled) ==="
@@ -333,7 +330,6 @@ jobs:
             ./staging_dir
             ./build_dir
           key: immwrt-${{ runner.os }}-v2-${{ hashFiles('.config') }}
-          save-always: true
 
       # ========== Find & rename firmware ==========
       - name: Find and rename firmware

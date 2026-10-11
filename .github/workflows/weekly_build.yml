@@ -18,6 +18,10 @@ on:
 
 env:
   TZ: Asia/Shanghai
+  CCACHE_DIR: /ccache
+  CCACHE_MAXSIZE: 10G
+  GOLANG_MOD_CACHE_DIR: /go/mod/cache
+  MAKEFLAGS: "CCACHE_DIR=/ccache CC=ccache CXX=ccache GOCACHE=/go/gocache"
 
 permissions:
   contents: write
@@ -191,7 +195,7 @@ jobs:
         run: |
           echo "=== Installing required tools ==="
           sudo apt-get update -qq
-          sudo apt-get install -y -qq qemu-utils genisoimage parted dosfstools
+          sudo apt-get install -y -qq qemu-utils genisoimage parted dosfstools ccache
 
       # ========== Copy overlay files ==========
       - name: Copy overlay files
@@ -270,23 +274,40 @@ jobs:
 
 
 
+      # ========== Restore ccache/sstate cache ==========
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            /ccache
+            /go/mod/cache
+            /go/gocache
+            ./staging_dir
+            ./build_dir
+          key: immwrt-${{ runner.os }}-v2-${{ hashFiles('.config') }}
+          restore-keys: |
+            immwrt-${{ runner.os }}-v2-
+
       # ========== Compile firmware ==========
 
       - name: Compile firmware
         id: compile
+        env:
+          CCACHE_DIR: /ccache
         run: |
-          echo "=== Compiling firmware (x86_64 EFI, parallel=\$(nproc)) ==="
+          mkdir -p /ccache /go/mod/cache /go/gocache
+          echo "=== Compiling firmware (x86_64 EFI, ccache enabled) ==="
+          echo "=== ccache stats before: ==="
+          ccache -s || true
           make -j$(nproc) V=s 2>&1 | tee build.log
           BUILD_STATUS=${PIPESTATUS[0]}
           if [ $BUILD_STATUS -ne 0 ]; then
-            echo "=== Retry with -j8 ==="
-            make clean >/dev/null 2>&1 || true
+            echo "=== Retry with -j8 (no clean to save time) ==="
             make -j8 V=s 2>&1 | tee -a build.log
             BUILD_STATUS=${PIPESTATUS[0]}
           fi
           if [ $BUILD_STATUS -ne 0 ]; then
-            echo "=== Retry with single thread ==="
-            make clean >/dev/null 2>&1 || true
+            echo "=== Retry with single thread (no clean to save time) ==="
             make -j1 V=s 2>&1 | tee -a build.log
             BUILD_STATUS=${PIPESTATUS[0]}
           fi
@@ -297,6 +318,22 @@ jobs:
             exit 1
           fi
           echo "✅ Build complete"
+          echo "=== ccache stats after: ==="
+          ccache -s || true
+
+      # ========== Save cache (always run to preserve build progress) ==========
+      - name: Save cache
+        if: always()
+        uses: actions/cache@v4
+        with:
+          path: |
+            /ccache
+            /go/mod/cache
+            /go/gocache
+            ./staging_dir
+            ./build_dir
+          key: immwrt-${{ runner.os }}-v2-${{ hashFiles('.config') }}
+          save-always: true
 
       # ========== Find & rename firmware ==========
       - name: Find and rename firmware

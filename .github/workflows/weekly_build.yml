@@ -259,19 +259,6 @@ jobs:
           cp files/10_system.js feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
           echo "✅ 10_system.js patched"
 
-      # ========== Fix znetcontrol Makefile (gmake 4.4+ strictness + Build/Prepare bug) ==========
-      - name: Fix znetcontrol Makefile
-        run: |
-          echo "=== Fixing luci-app-znetcontrol/Makefile ==="
-          MAKEFILE="feeds/zuoxm/luci-app-znetcontrol/Makefile"
-          if [ -f "$MAKEFILE" ]; then
-            python3 .github/workflows/scripts/fix-znetcontrol.py
-            echo "✅ $MAKEFILE fixed"
-          else
-            echo "⚠️ $MAKEFILE not found, skipping"
-          fi
-
-
 
       # ========== Restore ccache/sstate cache ==========
       - name: Restore cache

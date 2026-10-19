@@ -1,8 +1,9 @@
 name: Daily Upstream Sync
 
 on:
-  schedule:
-    - cron: '0 1 * * *'
+  # schedule disabled: GitHub 免费版 cron 延迟 4+ 小时，改由服务器 crontab 触发
+  # schedule:
+  #   - cron: '0 1 * * *'
   workflow_dispatch:
 
 env:

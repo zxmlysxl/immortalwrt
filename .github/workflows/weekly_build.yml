@@ -1,8 +1,9 @@
 name: Build ImmortalWrt x86_64
 
 on:
-  schedule:
-    - cron: '30 2 * * 1'
+  # schedule disabled: GitHub 免费版 cron 延迟 4+ 小时，改由服务器 crontab 触发
+  # schedule:
+  #   - cron: '30 2 * * 1'
   workflow_dispatch:
     inputs:
       skip_sync:

@@ -319,6 +319,33 @@ jobs:
             ./build_dir
           key: immwrt-${{ runner.os }}-${{ hashFiles('.config') }}
 
+      # ========== Collect apk packages (CONFIG_USE_APK=y) ==========
+      - name: Collect apk packages
+        run: |
+          echo "=== Collecting .apk packages (CONFIG_USE_APK=y) ==="
+          APK_DIR="bin/packages/x86_64/zuoxm"
+          if [ -d "$APK_DIR" ]; then
+            find "$APK_DIR" -name '*.apk' | sort | tee /tmp/apk-list.txt || true
+            APK_COUNT=$(grep -c . /tmp/apk-list.txt 2>/dev/null || echo 0)
+            echo "APK count: $APK_COUNT"
+            mkdir -p release-pkgs
+            cp $APK_DIR/*.apk release-pkgs/ 2>/dev/null || true
+            # 收集所有启用 feed 的 apk（依赖包来自官方 feed）
+            # CONFIG_PER_FEED_REPO=y → bin/packages/x86_64/<feed>/
+            for d in base luci packages routing telephony video packageset; do
+              if [ -d "bin/packages/x86_64/$d" ]; then
+                cp "bin/packages/x86_64/$d"/*.apk release-pkgs/ 2>/dev/null || true
+              fi
+            done
+            ls -lh release-pkgs/ | head -20
+            echo "Total apks staged: $(ls release-pkgs/*.apk 2>/dev/null | wc -l)"
+          else
+            echo "WARN: $APK_DIR not found (apk packages may not have been built)"
+            find bin/packages -name '*.apk' 2>/dev/null | head -10 || true
+            mkdir -p release-pkgs
+          fi
+          echo "=== apk staging complete ==="
+
       # ========== Find & rename firmware ==========
       - name: Find and rename firmware
         id: firmware
@@ -376,7 +403,9 @@ jobs:
           name: Z-ImmWrt-${{ steps.firmware.outputs.build_date }} by zuoxm
           draft: false
           prerelease: false
-          files: bin/targets/*/*/Z-ImmWrt-*.img.gz
+          files: |
+            bin/targets/*/*/Z-ImmWrt-*.img.gz
+            release-pkgs/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

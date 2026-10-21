@@ -53,6 +53,15 @@ jobs:
 
       # Remove known-broken backport patches that upstream keeps re-adding
       # These are for Linux 6.19+ and fail on our Linux 6.18.52 kernel headers
+      # 锁定 ucode：跟随 upstream/master 的 2026.10.18 版本，删除本地冗余 backport patch
+      - name: Lock ucode version & drop stale patches
+        run: |
+          # ucode 110/111 backport patch 在 10.18 源码里已原生包含，删掉防止 patch 冲突
+          rm -f package/utils/ucode/patches/110-uloop-allow-reusing-the-existing-environment.patch
+          rm -f package/utils/ucode/patches/111-uloop-add-optional-setup-callback-to-process.patch
+          git add -u package/utils/ucode/patches/ 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "chore: lock ucode to upstream 2026.10.18, drop stale 110/111 backports" --allow-empty 2>/dev/null || true
+
       - name: Drop broken backport patches
         run: |
           rm -f target/linux/generic/backport-6.18/*realtek*.patch

@@ -36,3 +36,4 @@ git-src
 .ccache
 .vscode*
 release-pkgs/
+release-apk-all

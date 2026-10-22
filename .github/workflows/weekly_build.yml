@@ -329,22 +329,25 @@ jobs:
           if [ -d "$APK_DIR" ]; then
             find "$APK_DIR" -name '*.apk' | sort | tee /tmp/apk-list.txt || true
             APK_COUNT=$(grep -c . /tmp/apk-list.txt 2>/dev/null || echo 0)
-            echo "APK count: $APK_COUNT"
-            mkdir -p release-pkgs
+            echo "zuoxm apk count: $APK_COUNT"
+            mkdir -p release-pkgs release-apk-all
+            # zuoxm feed 自产包 -> 发布到 zxm_immortalwrt_packages
             cp $APK_DIR/*.apk release-pkgs/ 2>/dev/null || true
+            # 固件 release 保留全部 apk (含官方 feed 依赖包)
+            cp release-pkgs/*.apk release-apk-all/ 2>/dev/null || true
             # 收集所有启用 feed 的 apk（依赖包来自官方 feed）
             # CONFIG_PER_FEED_REPO=y → bin/packages/x86_64/<feed>/
             for d in base luci packages routing telephony video packageset; do
               if [ -d "bin/packages/x86_64/$d" ]; then
-                cp "bin/packages/x86_64/$d"/*.apk release-pkgs/ 2>/dev/null || true
+                cp "bin/packages/x86_64/$d"/*.apk release-apk-all/ 2>/dev/null || true
               fi
             done
             ls -lh release-pkgs/ | head -20
-            echo "Total apks staged: $(ls release-pkgs/*.apk 2>/dev/null | wc -l)"
+            echo "zuoxm apks staged: $(ls release-pkgs/*.apk 2>/dev/null | wc -l)"
+            echo "total apks staged: $(ls release-apk-all/*.apk 2>/dev/null | wc -l)"
           else
             echo "WARN: $APK_DIR not found (apk packages may not have been built)"
             find bin/packages -name '*.apk' 2>/dev/null | head -10 || true
-            mkdir -p release-pkgs
           fi
           echo "=== apk staging complete ==="
 
@@ -407,11 +410,54 @@ jobs:
           prerelease: false
           files: |
             bin/targets/*/*/Z-ImmWrt-*.img.gz
-            release-pkgs/*.apk
+            release-apk-all/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ========== Summary ==========
+      - name: Publish apk to packages repo
+        env:
+          GH_TOKEN: ${{ secrets.PKG_REPO_TOKEN }}
+          PKG_REPO: zxmlysxl/zxm_immortalwrt_packages
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::PKG_REPO_TOKEN not set - skip publishing apk"
+            exit 0
+          fi
+          if [ -z "$(ls release-pkgs/*.apk 2>/dev/null)" ]; then
+            echo "::warning::release-pkgs empty - skip publishing"
+            exit 0
+          fi
+          TAG="apk-$(TZ=Asia/Shanghai date +%Y%m%d-%H%M)"
+          echo "=== Publishing zuoxm apk to zxm_immortalwrt_packages (tag $TAG) ==="
+          ls release-pkgs/*.apk | xargs -n1 basename | sort > /tmp/apk-pkg-list.txt
+          {
+            echo "佐罗 ImmortalWrt 插件包汇总 (apk)"
+            echo ""
+            echo "**编译日期**: $(TZ=Asia/Shanghai date +%Y%m%d-%H%M)"
+            echo "**架构**: x86_64"
+            echo "**包管理格式**: apk (CONFIG_USE_APK=y)"
+            echo ""
+            echo "安装方法："
+            echo "~~~bash"
+            echo "apk add --allow-untrusted <包名>.apk"
+            echo "~~~"
+            echo ""
+            echo "共 $(wc -l < /tmp/apk-pkg-list.txt) 个包："
+            echo "~~~"
+            cat /tmp/apk-pkg-list.txt
+            echo "~~~"
+          } > /tmp/apk-pkg-notes.md
+          if gh release view "$TAG" --repo "$PKG_REPO" >/dev/null 2>&1; then
+            echo "release $TAG exists - deleting first"
+            gh release delete "$TAG" --repo "$PKG_REPO" --yes
+          fi
+          gh release create "$TAG" release-pkgs/*.apk \
+            --repo "$PKG_REPO" \
+            --title "插件包汇总 $TAG" \
+            --notes-file /tmp/apk-pkg-notes.md
+          echo "=== published: https://github.com/$PKG_REPO/releases/tag/$TAG ==="
+
       - name: Summary
         run: |
           echo "## ✅ Build Complete" >> $GITHUB_STEP_SUMMARY

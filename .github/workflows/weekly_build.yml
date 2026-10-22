@@ -474,49 +474,6 @@ jobs:
           echo "=== published: https://github.com/$PKG_REPO/releases/tag/$TAG ==="
 
       # ========== Publish apk packages to zxm_immortalwrt_packages ==========
-      - name: Publish apk to packages repo
-        env:
-          GH_TOKEN: ${{ secrets.PKG_REPO_TOKEN }}
-          PKG_REPO: zxmlysxl/zxm_immortalwrt_packages
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::warning::PKG_REPO_TOKEN not set - skip publishing apk"
-            exit 0
-          fi
-          if [ -z "$(ls release-pkgs/*.apk 2>/dev/null)" ]; then
-            echo "::warning::release-pkgs empty - skip publishing"
-            exit 0
-          fi
-          TAG="apk-$(TZ=Asia/Shanghai date +%Y%m%d-%H%M)"
-          echo "=== Publishing zuoxm apk to zxm_immortalwrt_packages (tag $TAG) ==="
-          ls release-pkgs/*.apk | xargs -n1 basename | sort > /tmp/apk-pkg-list.txt
-          {
-            echo "佐罗 ImmortalWrt 插件包汇总 (apk)"
-            echo ""
-            echo "**编译日期**: $(TZ=Asia/Shanghai date +%Y%m%d-%H%M)"
-            echo "**架构**: x86_64"
-            echo "**包管理格式**: apk (CONFIG_USE_APK=y)"
-            echo ""
-            echo "安装方法："
-            echo "~~~bash"
-            echo "apk add --allow-untrusted <包名>.apk"
-            echo "~~~"
-            echo ""
-            echo "共 $(wc -l < /tmp/apk-pkg-list.txt) 个包："
-            echo "~~~"
-            cat /tmp/apk-pkg-list.txt
-            echo "~~~"
-          } > /tmp/apk-pkg-notes.md
-          if gh release view "$TAG" --repo "$PKG_REPO" >/dev/null 2>&1; then
-            echo "release $TAG exists - deleting first"
-            gh release delete "$TAG" --repo "$PKG_REPO" --yes
-          fi
-          gh release create "$TAG" release-pkgs/*.apk \
-            --repo "$PKG_REPO" \
-            --title "插件包汇总 $TAG" \
-            --notes-file /tmp/apk-pkg-notes.md
-          echo "=== published: https://github.com/$PKG_REPO/releases/tag/$TAG ==="
-
       - name: Summary
         run: |
           echo "## ✅ Build Complete" >> $GITHUB_STEP_SUMMARY

@@ -17,6 +17,10 @@ on:
         default: '0'
         type: string
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.retry_count || '0' }}
+  cancel-in-progress: true
+
 env:
   TZ: Asia/Shanghai
   CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -292,13 +296,11 @@ jobs:
             BUILD_STATUS=${PIPESTATUS[0]}
           fi
           if [ $BUILD_STATUS -ne 0 ]; then
-            echo "=== Retry with single thread (no clean to save time) ==="
-            make -j1 V=s 2>&1 | tee -a build.log
-            BUILD_STATUS=${PIPESTATUS[0]}
-          fi
-          if [ $BUILD_STATUS -ne 0 ]; then
             echo "=== Build failed, last 50 lines: ==="
             tail -50 build.log
+            if grep -qE '[c]url: [(]22[)]|Download failed|failed to build|Hash Sum mismatch' build.log; then
+              echo '::notice::Build failed on a download/package error - retrying will not help, failing fast'
+            fi
             echo "::notice::Build failed with exit code $BUILD_STATUS"
             exit 1
           fi
@@ -425,7 +427,7 @@ jobs:
   # ========== Auto-retry on failure ==========
   retry:
     needs: build
-    if: failure()
+    if: failure() && inputs.retry_count < 1
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

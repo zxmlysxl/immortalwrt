@@ -317,9 +317,25 @@ jobs:
           make -j$(nproc) V=s 2>&1 | tee build.log
           BUILD_STATUS=${PIPESTATUS[0]}
           if [ $BUILD_STATUS -ne 0 ]; then
-            echo "=== Retry with -j8 (no clean to save time) ==="
-            make -j8 V=s 2>&1 | tee -a build.log
-            BUILD_STATUS=${PIPESTATUS[0]}
+            # 解析出失败的包(feed 上游偶尔会锁到"tag 存在但 release 资产为空"的
+            # 版本, 下载必然 404, 整轮固件因此报废)。剔除后增量重试:
+            # 已编译成功的包仍在 build_dir 里, 重试只需补编失败的那个, 很快。
+            BADPKGS=$(grep -oE "ERROR: package/[^ ]+ failed to build" build.log | sed "s|ERROR: package/||; s| failed to build||" | sort -u | head -8)
+            if [ -n "$BADPKGS" ]; then
+              echo "=== 检测到失败的包: $BADPKGS ==="
+              for p in $BADPKGS; do
+                NAME=${p##*/}
+                echo "--- 剔除 $NAME (源码不可达, 本轮不参与编译) ---"
+                sed -i "/^CONFIG_PACKAGE_${NAME}=/d" .config
+                case "$NAME" in
+                  luci-app-*) sed -i "/^CONFIG_PACKAGE_luci-i18n-${NAME#luci-app-}=/d" .config ;;
+                esac
+              done
+              make defconfig
+              echo "=== Retry after dropping broken packages ==="
+              make -j$(nproc) V=s 2>&1 | tee -a build.log
+              BUILD_STATUS=${PIPESTATUS[0]}
+            fi
           fi
           if [ $BUILD_STATUS -ne 0 ]; then
             echo "=== Build failed, last 50 lines: ==="

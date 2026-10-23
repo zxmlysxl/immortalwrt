@@ -71,30 +71,16 @@ function s2l(y,m,d){
 }
 
 /* ================= 干支纪年 =================
-   干支年以【立春】换年, 不是农历正月初一。
-   立春时刻由太阳视黄经=315° 天文算法实时求解, 精度 ±1 分钟。 */
-function _sunLon(jd){
-  var T=(jd-2451545.0)/36525;
-  var L0=280.46646+36000.76983*T+0.0003032*T*T;
-  var M=(357.52911+35999.05029*T-0.0001537*T*T)*Math.PI/180;
-  var C=(1.914602-0.004817*T-0.000014*T*T)*Math.sin(M)
-       +(0.019993-0.000101*T)*Math.sin(2*M)
-       +0.000289*Math.sin(3*M);
-  var O=(125.04-1934.136*T)*Math.PI/180;
-  return (L0+C-0.00569-0.00478*Math.sin(O)+360)%360;
-}
-function _lichunMs(y){
-  var lo=Date.UTC(y,1,1)/86400000+2440587.5,
-      hi=Date.UTC(y,1,8)/86400000+2440587.5, i, mid;
-  for(i=0;i<48;i++){
-    mid=(lo+hi)/2;
-    if(_sunLon(mid)<315) lo=mid; else hi=mid;
-  }
-  return Math.round(((lo+hi)/2-2440587.5)*86400000);
+   岁首取【农历正月初一】(国家标准 GB/T 33661-2017《农历的编算和颁行》),
+   与印制农历日历一致。传统命理另有以立春换年之说, 本页不采用。 */
+/* 农历年序: 正月初一为岁首。与 s2l() 同一套偏移算法。 */
+function lYear(y,m,d){
+  var off=Math.floor((Date.UTC(y,m-1,d)-Date.UTC(1900,0,31))/86400000), i, dy;
+  for(i=1900;i<2100;i++){ dy=lyDays(i); if(off<dy) break; off-=dy; }
+  return i;
 }
 function ganzhiYear(now){
-  var y=now.getFullYear();
-  var g=(now.getTime()<_lichunMs(y)) ? y-1 : y;
+  var g=lYear(now.getFullYear(),now.getMonth()+1,now.getDate());
   var i=((g-4)%60+60)%60;
   return GZ[i%10]+GZ2[i%12]+'年';
 }

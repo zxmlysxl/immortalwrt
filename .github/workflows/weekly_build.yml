@@ -461,7 +461,7 @@ jobs:
           fi
           TAG="apk-$(TZ=Asia/Shanghai date +%Y%m%d-%H%M)"
           echo "=== Publishing zuoxm apk to zxm_immortalwrt_packages (tag $TAG) ==="
-          ls release-pkgs/*.apk | xargs -n1 basename | sort > /tmp/apk-pkg-list.txt
+          ls release-pkgs/*.apk | sort | while read f; do basename "$f"; done > /tmp/apk-pkg-list.txt
           {
             echo "佐罗 ImmortalWrt 插件包汇总 (apk)"
             echo ""

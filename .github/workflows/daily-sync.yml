@@ -42,7 +42,7 @@ jobs:
               git checkout --theirs feeds.conf.default
               printf 'src-git zuoxm https://github.com/zxmlysxl/zxm_immortalwrt_packages.git\nsrc-git packages https://github.com/zxmlysxl/immortalwrt_packages.git\nsrc-git luci https://github.com/zxmlysxl/zxm_immortalwrt_luci.git\n' > feeds.conf.default
               git add feeds.conf.default
-              git commit --no-edit
+              git commit -m "chore: merge upstream master" --allow-empty
             fi
             if ! git merge-head --quiet 2>/dev/null; then
               git merge --abort 2>/dev/null || true

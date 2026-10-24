@@ -121,7 +121,7 @@ jobs:
                   ;;
               esac
             done
-            git commit --no-edit --allow-empty
+            git commit -m "chore: merge upstream master" --allow-empty
           }
           echo "=== Sync complete ==="
           git log --oneline -3

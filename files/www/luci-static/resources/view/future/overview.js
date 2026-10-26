@@ -139,12 +139,14 @@ function rows(a){
   return s+'</div>';
 }
 function gauge(pct, color, unit, meta){
-  var C=389.6, n=parseFloat(pct);
+  // 画布 152, 圆心 76, 半径 68, 描边 10 => 描边外缘 73 < 76,
+  // 3/6/9/12 点不再被 SVG 视口裁成直线 (原来 132/66/62 时外缘 67 > 66 会裁掉 1px)
+  var C=427.3, n=parseFloat(pct);
   if(!isFinite(n)) n=0;
   var p=Math.max(0,Math.min(100,n));
-  return '<div class="fov gauge"><svg width="132" height="132">'+
-    '<circle class="fov gbg" cx="66" cy="66" r="62"></circle>'+
-    '<circle class="fov gfg" cx="66" cy="66" r="62" stroke="'+color+
+  return '<div class="fov gauge"><svg width="152" height="152">'+
+    '<circle class="fov gbg" cx="76" cy="76" r="68"></circle>'+
+    '<circle class="fov gfg" cx="76" cy="76" r="68" stroke="'+color+
     '" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+(C-(C*p/100)).toFixed(1)+'"></circle></svg>'+
     '<div class="fov gval"><div class="fov gnum" style="color:'+color+'">'+Math.round(p)+
     '<span class="fov gunit">'+unit+'</span></div></div></div>'+

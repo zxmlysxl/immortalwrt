@@ -20,6 +20,18 @@ var callNetAll   = rpc.declare({ object: 'luci-rpc', method: 'getNetwork', expec
 
 var D = {};
 
+/* 页面刷新间隔（秒），0 = 关闭。
+   全页只有这一套轮询：顶部下拉框选的值，所有数据（含在线用户）一起刷新，
+   在线用户区不再单独维护自己的间隔。 */
+var POLL_SEC = 10;
+try{
+  var _pv = String(localStorage.getItem('fov_poll_interval')||'');
+  if(_pv==='5'||_pv==='10'||_pv==='15'||_pv==='0') POLL_SEC = parseInt(_pv,10);
+}catch(e){}
+function pollHint(){
+  return POLL_SEC>0 ? ('轮询 '+POLL_SEC+'s') : '轮询已关闭';
+}
+
 /* ================= 农历 ================= */
 var LUNAR=[0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
 0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
@@ -668,17 +680,19 @@ function buildHTML(){
   ps+='</div>';
   var sPrt=sec('网口状态','luci.getBuiltinEthernetPorts', ps,'');
 
-  /* ---- 在线用户：ARP + 连接跟踪，折叠显示设备明细 ---- */
-  var sOnl=sec('在线用户','ARP / 连接跟踪 实时检测 · 轮询 5s',
+  /* ---- 在线用户：ARP + 连接跟踪，折叠显示设备明细 ----
+     首屏就把当前值写进 HTML：load() 已经取到数据，不必等第一次轮询才显示数字。
+     轮询间隔与页面顶部下拉框同源，这里不再单独写死一个 5s。 */
+  var sOnl=sec('在线用户','ARP / 连接跟踪 实时检测 · <span id="fov-pollhint">'+pollHint()+'</span>',
       '<div class="fov ustat">'+
-      '<div class="fov ucell"><div class="fov unum" id="fov-ucnt">0</div>'+
+      '<div class="fov ucell"><div class="fov unum" id="fov-ucnt">'+((d.onlineCount)||0)+'</div>'+
       '<div class="fov ulab">在线设备</div></div>'+
-      '<div class="fov ucell"><div class="fov unum" id="fov-ct">0</div>'+
+      '<div class="fov ucell"><div class="fov unum" id="fov-ct">'+((d.conntrack)||0)+'</div>'+
       '<div class="fov ulab">活动连接</div></div>'+
       '</div>'+
       '<div class="fov ucoll">'+
       '<div class="fov uhead" id="fov-uhead"><span class="fov ucaret">&#9656;</span>'+
-      '<span>设备明细</span><span class="fov ucnt" id="fov-ucnt2">0</span></div>'+
+      '<span>设备明细</span><span class="fov ucnt" id="fov-ucnt2">'+((d.hosts&&d.hosts.length)||0)+'</span></div>'+
       '<div class="fov ulist" id="fov-users" style="display:none"></div>'+
       '</div>','');
 
@@ -929,6 +943,7 @@ function repaint(){
   }
   var uc=document.getElementById('fov-ucnt'); if(uc) uc.textContent=D.onlineCount||0;
   var ct=document.getElementById('fov-ct');   if(ct) ct.textContent=D.conntrack||0;
+  var hint=document.getElementById('fov-pollhint'); if(hint) hint.textContent=pollHint();
   bindSetStatic();
   renderUsers();
 }
@@ -1078,39 +1093,53 @@ return view.extend({
     watchTheme(root);
     bindUserToggle();
 
-    /* ---- 轮询间隔下拉框：5s/10s/15s/关闭（render 返回前挂载，DOM attach 后绑定） ---- */
+    /* ---- 轮询间隔下拉框：5s/10s/15s/关闭（render 返回前挂载，DOM attach 后绑定） ----
+       全页统一由这一个定时器驱动：进入页面先由 load() 取一次数据（首屏即显示），
+       之后按这里选定的间隔整体刷新。 */
     (function(){
       var POLL_KEY='fov_poll_interval';
       function startPoll(v){
         v=String(v||'10');
+        POLL_SEC=parseInt(v,10);
+        if(!isFinite(POLL_SEC)) POLL_SEC=10;
         if(window.__fovPollTimer){ clearInterval(window.__fovPollTimer); window.__fovPollTimer=null; }
-        if(v==='0') return;
-        var ms=parseInt(v,10)*1000;
+        window.__fovPollSec=v;
+        if(POLL_SEC===0) return;
+        var ms=POLL_SEC*1000;
         window.__fovPollTimer=setInterval(function(){
           console.log('[FOV] timer fired, refreshLive @'+new Date().toLocaleTimeString());
           refreshLive();
         }, ms);
       }
+      function paintHint(){
+        var el=document.getElementById('fov-pollhint');
+        if(el) el.textContent=pollHint();
+      }
       function bind(){
         var sel=document.getElementById('fov-poll');
         if(!sel) return;
-        var bound=document.__fovPollBound;
-        if(bound){
-          /* 已绑定过，只重置定时器（DOM 被重绘/复用场景） */
-          startPoll(sel.value);
-          return;
-        }
         var saved='';
         try{ saved=localStorage.getItem(POLL_KEY)||''; }catch(e){}
         var cur=String(saved||'10');
-        sel.value=cur;
+        /* 每次都把保存的间隔写回控件：重绘后新建的 select 默认停在第一个选项(5s)，
+           不写回就会悄悄把用户设的间隔改掉。 */
+        try{ sel.value=cur; }catch(e){}
+        if(sel.__fovBound){
+          /* 该控件已绑过监听：只同步定时器，不重复绑定。
+             间隔没变就不重启，否则 200ms/1s 的兜底调用会把首轮轮询一再推后。 */
+          if(String(window.__fovPollSec||'')!==String(cur)) startPoll(cur);
+          return;
+        }
+        sel.__fovBound=true;
         sel.addEventListener('change',function(){
           var v=sel.value;
           try{ localStorage.setItem(POLL_KEY, v); }catch(e){}
           startPoll(v);
+          paintHint();
+          /* 换档立即刷一次，让新间隔立刻可见 */
+          refreshLive();
         });
         startPoll(cur);
-        document.__fovPollBound=true;
         console.log('[FOV] poll sel bound, interval='+(cur==='0'?'off':cur+'s'));
       }
       /* render() 在 LuCI attach 之前执行，#fov-poll 此时不在 document。

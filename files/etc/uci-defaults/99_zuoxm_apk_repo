@@ -1,0 +1,18 @@
+#!/bin/sh
+# 99_zuoxm_apk_repo: 把 apk 仓库源改成佐罗自己的（解决上游 kyarucloud 404）
+# 两个仓库行:
+#   zuoxm -> 指向佐罗服务器独立发布的 apk 仓库 (有 apk + packages.adb)
+#   video -> 上游没有索引, 注释掉避免 apk update 报错
+# 该文件每次 apk 包安装后由 UCI 触发, 幂等。
+
+ZUOXM_REPO="https://www.877955.xyz/files/snapshots/x86_64/zuoxm/packages.adb"
+DISTFEEDS="/etc/apk/repositories.d/distfeeds.list"
+[ -f "$DISTFEEDS" ] || exit 0
+
+# 1) zuoxm 行: 把整行 URL 换成佐罗源 (匹配 x86_64/zuoxm 的 http 行)
+sed -i "s|^https://[^ #]*packages/x86_64/zuoxm/packages.adb[[:space:]]*$|$ZUOXM_REPO|" "$DISTFEEDS" 2>/dev/null
+
+# 2) video 行: 注释掉 (上游无索引, 404)
+sed -i "s|^https://[^ #]*packages/x86_64/video/packages.adb.*$|# (disabled: upstream has no video index) &|" "$DISTFEEDS" 2>/dev/null
+
+exit 0

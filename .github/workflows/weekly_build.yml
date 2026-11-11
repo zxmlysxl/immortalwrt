@@ -198,8 +198,45 @@ jobs:
       - name: Install build tools
         run: |
           echo "=== Installing required tools ==="
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq qemu-utils genisoimage parted dosfstools ccache
+          # apt 在 GitHub runner 上偶发 DNS 解析失败（Temporary failure resolving）
+          # （2026-11-11 连续两次 run 都因此挂在这一步，与代码无关）。
+          # 这里加重试 + 逐包安装 + 最终校验，让单次网络抖动不再废掉整次编译。
+          apt_update() {
+            for i in 1 2 3 4 5; do
+              if sudo apt-get -o Acquire::Retries=5 update -qq; then
+                echo "apt-get update OK (attempt $i)"
+                return 0
+              fi
+              echo "apt-get update failed (attempt $i), retry in 20s..."
+              sleep 20
+            done
+            return 1
+          }
+          apt_update || echo "WARN: apt-get update 全部重试失败，继续尝试安装"
+          # 逐个安装：单个包拉不下来不再整体失败
+          for p in qemu-utils genisoimage parted dosfstools ccache; do
+            ok=0
+            for i in 1 2 3; do
+              if sudo apt-get -o Acquire::Retries=5 install -y -qq "$p"; then
+                ok=1
+                break
+              fi
+              echo "install $p failed (attempt $i), retry in 15s..."
+              sleep 15
+            done
+            [ "$ok" = "1" ] || echo "WARN: 包 $p 安装失败"
+          done
+          # 校验真正必需的二进制（缺了 make 阶段会在生成 VMDK/ISO 时失败）
+          MISSING=""
+          for b in qemu-img genisoimage parted mkfs.vfat; do
+            command -v "$b" >/dev/null 2>&1 || MISSING="$MISSING $b"
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::缺少构建必需的工具:$MISSING"
+            exit 1
+          fi
+          echo "构建工具就绪: $(command -v qemu-img) $(command -v genisoimage) $(command -v parted) $(command -v mkfs.vfat)"
+          command -v ccache >/dev/null 2>&1 && echo "ccache 可用" || echo "WARN: ccache 不可用，本次编译无缓存加速"
 
       # ========== Copy overlay files ==========
       - name: Copy overlay files

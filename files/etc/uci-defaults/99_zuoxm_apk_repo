@@ -6,6 +6,7 @@
 # 该文件每次 apk 包安装后由 UCI 触发, 幂等。
 
 ZUOXM_REPO="https://www.877955.xyz/files/snapshots/x86_64/zuoxm/packages.adb"
+ZUOXM_KEYURL="https://www.877955.xyz/files/snapshots/x86_64/zuoxm/zuoxm-apk-ec.pem"
 DISTFEEDS="/etc/apk/repositories.d/distfeeds.list"
 [ -f "$DISTFEEDS" ] || exit 0
 
@@ -14,5 +15,27 @@ sed -i "s|^https://[^ #]*packages/x86_64/zuoxm/packages.adb[[:space:]]*$|$ZUOXM_
 
 # 2) video 行: 注释掉 (上游无索引, 404)
 sed -i "s|^https://[^ #]*packages/x86_64/video/packages.adb.*$|# (disabled: upstream has no video index) &|" "$DISTFEEDS" 2>/dev/null
+
+# 3) 佐罗 apk 仓库公钥: 装进 /etc/apk/keys 与 /lib/apk/keys,
+#    让 apk v3 能验 packages.adb 内嵌 ECDSA 签名(否则客户端报 UNTRUSTED)。
+#    幂等: 已存在且非空则跳过; 每次 apk 操作后都会重触发本脚本, 自动补齐。
+for _kdir in /etc/apk/keys /lib/apk/keys; do
+    _kfile="$_kdir/zuoxm-apk-ec.pem"
+    if [ -s "$_kfile" ]; then
+        continue
+    fi
+    mkdir -p "$_kdir" 2>/dev/null || continue
+    if command -v wget >/dev/null 2>&1; then
+        wget -q -O "$_kfile.tmp" "$ZUOXM_KEYURL" 2>/dev/null
+    else
+        curl -s -o "$_kfile.tmp" "$ZUOXM_KEYURL" 2>/dev/null
+    fi
+    # 只接受看起来像 PEM 公钥的内容(防 404 页面被当成 key 装上)
+    if [ -s "$_kfile.tmp" ] && grep -q "BEGIN PUBLIC KEY\|BEGIN CERTIFICATE" "$_kfile.tmp" 2>/dev/null; then
+        mv -f "$_kfile.tmp" "$_kfile" 2>/dev/null
+    else
+        rm -f "$_kfile.tmp" 2>/dev/null
+    fi
+done
 
 exit 0

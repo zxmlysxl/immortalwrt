@@ -1,9 +1,15 @@
 #!/bin/sh
 # 99_zuoxm_apk_repo: 把 apk 仓库源改成佐罗自己的（解决上游 kyarucloud 404）
-# 两个仓库行:
+# 三个仓库行:
 #   zuoxm -> 指向佐罗服务器独立发布的 apk 仓库 (有 apk + packages.adb)
 #   video -> 上游没有索引, 注释掉避免 apk update 报错
-# 该文件每次 apk 包安装后由 UCI 触发, 幂等。
+#
+# 公钥说明: 佐罗 apk 仓库索引 packages.adb 由 zuoxm-apk-ec.key 签名,
+# 客户端必须有对应公钥才能验签, 否则 apk update 报 UNTRUSTED signature。
+# 该公钥已经随固件一起打包进 /etc/apk/keys 与 /lib/apk/keys, 开箱即可用,
+# 不依赖首次开机时的网络（全新安装此时往往还没配网络）。
+# 下面的下载逻辑只在公钥缺失时兜底恢复, 且优先用 curl:
+# 本固件的 busybox wget 不带 TLS, https 会静默失败。
 
 ZUOXM_REPO="https://www.877955.xyz/files/snapshots/x86_64/zuoxm/packages.adb"
 ZUOXM_KEYURL="https://www.877955.xyz/files/snapshots/x86_64/zuoxm/zuoxm-apk-ec.pem"
@@ -18,17 +24,18 @@ sed -i "s|^https://[^ #]*packages/x86_64/video/packages.adb.*$|# (disabled: upst
 
 # 3) 佐罗 apk 仓库公钥: 装进 /etc/apk/keys 与 /lib/apk/keys,
 #    让 apk v3 能验 packages.adb 内嵌 ECDSA 签名(否则客户端报 UNTRUSTED)。
-#    幂等: 已存在且非空则跳过; 每次 apk 操作后都会重触发本脚本, 自动补齐。
+#    固件已内置该公钥, 正常情况下这里全部跳过; 幂等, 可重复执行。
 for _kdir in /etc/apk/keys /lib/apk/keys; do
     _kfile="$_kdir/zuoxm-apk-ec.pem"
     if [ -s "$_kfile" ]; then
         continue
     fi
     mkdir -p "$_kdir" 2>/dev/null || continue
-    if command -v wget >/dev/null 2>&1; then
-        wget -q -O "$_kfile.tmp" "$ZUOXM_KEYURL" 2>/dev/null
-    else
-        curl -s -o "$_kfile.tmp" "$ZUOXM_KEYURL" 2>/dev/null
+    # 优先 curl (带 TLS); busybox wget 无 TLS, https 会失败
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$_kfile.tmp" "$ZUOXM_KEYURL" 2>/dev/null || rm -f "$_kfile.tmp" 2>/dev/null
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O "$_kfile.tmp" "$ZUOXM_KEYURL" 2>/dev/null || rm -f "$_kfile.tmp" 2>/dev/null
     fi
     # 只接受看起来像 PEM 公钥的内容(防 404 页面被当成 key 装上)
     if [ -s "$_kfile.tmp" ] && grep -q "BEGIN PUBLIC KEY\|BEGIN CERTIFICATE" "$_kfile.tmp" 2>/dev/null; then
